@@ -1,4 +1,12 @@
-import type { GenerationKey, Mode, PokeApiListItem, PokemonRow, PokemonType } from '../types';
+import type {
+  GenerationKey,
+  Mode,
+  PokeApiListItem,
+  PokemonDataItem,
+  PokemonRow,
+  PokemonStat,
+  PokemonType,
+} from '../types';
 
 export const MAX_POKEMON = 1025;
 
@@ -12,27 +20,6 @@ const generations: Array<{ key: GenerationKey; label: string; min: number; max: 
   { key: 'gen7', label: 'Gen VII', min: 722, max: 809 },
   { key: 'gen8', label: 'Gen VIII', min: 810, max: 905 },
   { key: 'gen9', label: 'Gen IX', min: 906, max: 1025 },
-];
-
-const typeCycle: PokemonType[] = [
-  'grass',
-  'fire',
-  'water',
-  'electric',
-  'psychic',
-  'ice',
-  'dragon',
-  'dark',
-  'fairy',
-  'normal',
-  'fighting',
-  'flying',
-  'poison',
-  'ground',
-  'rock',
-  'bug',
-  'ghost',
-  'steel',
 ];
 
 const knownTypes = new Map<number, PokemonType[]>([
@@ -54,12 +41,37 @@ const knownTypes = new Map<number, PokemonType[]>([
 ]);
 
 export async function fetchPokemonList(limit = MAX_POKEMON): Promise<PokemonRow[]> {
+  const localResponse = await fetch('/data/pokemon.json');
+  if (localResponse.ok) {
+    const payload = (await localResponse.json()) as PokemonDataItem[];
+    return pokemonDataToRows(payload.slice(0, limit));
+  }
+
   const response = await fetch(`https://pokeapi.co/api/v2/pokemon?limit=${limit}`);
   if (!response.ok) {
     throw new Error(`PokeAPI request failed: ${response.status}`);
   }
   const payload = (await response.json()) as { results: PokeApiListItem[] };
   return buildPokemonRows(payload.results.slice(0, limit));
+}
+
+export function pokemonDataToRows(items: PokemonDataItem[]): PokemonRow[] {
+  return items.map((item) => {
+    const generation = getGeneration(item.id);
+    const generationLabel = generations.find((entry) => entry.key === generation)?.label ?? 'Gen IX';
+    return {
+      id: item.id,
+      name: formatPokemonName(item.name),
+      slug: item.slug,
+      number: `#${String(item.id).padStart(3, '0')}`,
+      sprite: item.sprite,
+      artwork: item.artwork,
+      generation,
+      generationLabel,
+      types: item.types,
+      votes: 0,
+    };
+  });
 }
 
 export function buildPokemonRows(items: PokeApiListItem[], mode: Mode = 'favourite'): PokemonRow[] {
@@ -82,16 +94,16 @@ export function decoratePokemon(id: number, rawName: string, mode: Mode): Pokemo
     generation,
     generationLabel,
     types: getTypes(id),
-    votes: seededVoteCount(id, mode),
+    votes: 0,
   };
 }
 
-export function seededVoteCount(id: number, mode: Mode): number {
-  const modeSeed = mode === 'favourite' ? 37 : 911;
-  const mixed = Math.abs(Math.sin(id * 12.9898 + modeSeed) * 10000);
-  const baseline = mode === 'favourite' ? 28 : 11;
-  const spread = mode === 'favourite' ? 3050 : 1320;
-  return baseline + Math.floor(mixed % spread);
+export function mergePokemonStats(rows: PokemonRow[], stats: PokemonStat[]): PokemonRow[] {
+  const counts = new Map(stats.map((item) => [item.pokemonId, item.fanCount]));
+  return rows.map((row) => ({
+    ...row,
+    votes: counts.get(row.id) ?? 0,
+  }));
 }
 
 export function getGeneration(id: number): GenerationKey {
@@ -125,7 +137,5 @@ function idFromUrl(url: string): number | null {
 function getTypes(id: number): PokemonType[] {
   const known = knownTypes.get(id);
   if (known) return known;
-  const primary = typeCycle[id % typeCycle.length];
-  const secondary = id % 7 === 0 ? typeCycle[(id + 5) % typeCycle.length] : undefined;
-  return secondary && secondary !== primary ? [primary, secondary] : [primary];
+  return ['normal'];
 }

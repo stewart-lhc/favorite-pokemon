@@ -5,6 +5,15 @@ export type PokeApiListItem = {
   url: string;
 };
 
+export type PokemonDataItem = {
+  id: number;
+  slug: string;
+  name: string;
+  types: PokemonType[];
+  sprite: string;
+  artwork: string;
+};
+
 export type GenerationKey =
   | 'gen1'
   | 'gen2'
@@ -49,6 +58,12 @@ export type PokemonRow = {
   votes: number;
 };
 
+export type PokemonStat = {
+  pokemonId: number;
+  pokemonName: string;
+  fanCount: number;
+};
+
 export type DeclarationInput = {
   trainerName: string;
   pokemonId: number;
@@ -60,4 +75,9 @@ export type DeclarationInput = {
 export type Declaration = DeclarationInput & {
   id: string;
   createdAt: string;
+};
+
+export type BackendData = {
+  stats: PokemonStat[];
+  latest: Declaration[];
 };

@@ -10,9 +10,11 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint .",
-    "check": "npm run test && npm run build"
+    "check": "npm run test && npm run build",
+    "sync:pokemon": "node scripts/sync-pokemon-data.mjs"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.1.0",
     "lucide-react": "^0.561.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",

@@ -13,27 +13,21 @@ import {
   allGenerations,
   fetchPokemonList,
   generationLabel,
-  seededVoteCount,
+  mergePokemonStats,
   typeIconUrl,
 } from './lib/pokemon';
-import { getDeclarations, hasDeclaredOnDevice, saveDeclaration } from './lib/storage';
-import type { Declaration, GenerationKey, Mode, PokemonRow, PokemonType } from './types';
+import {
+  createBackendDeclaration,
+  loadBackendData,
+  loadPokemonDeclarations,
+} from './lib/backend';
+import { hasDeclaredOnDevice, markDeclaredOnDevice } from './lib/storage';
+import type { Declaration, GenerationKey, Mode, PokemonRow, PokemonStat, PokemonType } from './types';
 
 type Language = 'en' | 'es';
 type Route = '/' | '/game' | '/explore' | '/pokedex' | '/stats';
 type SortKey = 'number' | 'name' | 'fans';
 type StatusFilter = 'all' | 'revealed' | 'hidden';
-
-const fallbackPokemon = [
-  { name: 'bulbasaur', url: 'https://pokeapi.co/api/v2/pokemon/1/' },
-  { name: 'charmander', url: 'https://pokeapi.co/api/v2/pokemon/4/' },
-  { name: 'squirtle', url: 'https://pokeapi.co/api/v2/pokemon/7/' },
-  { name: 'pikachu', url: 'https://pokeapi.co/api/v2/pokemon/25/' },
-  { name: 'magikarp', url: 'https://pokeapi.co/api/v2/pokemon/129/' },
-  { name: 'mewtwo', url: 'https://pokeapi.co/api/v2/pokemon/150/' },
-  { name: 'mew', url: 'https://pokeapi.co/api/v2/pokemon/151/' },
-  { name: 'eevee', url: 'https://pokeapi.co/api/v2/pokemon/133/' },
-];
 
 const translations = {
   en: {
@@ -193,15 +187,6 @@ const notFavouriteOverrides = {
   },
 } satisfies Record<Language, Partial<Record<keyof typeof translations.en, string>>>;
 
-const sampleReasons = [
-  'They carried my first team and still feel like home.',
-  'The design is perfect: simple, strange, and instantly memorable.',
-  'My little cousin picked them once and now the whole family cheers.',
-  'They look harmless until the battle turns serious.',
-  'No other Pokémon has this much personality in a tiny sprite.',
-  'A forever partner for every route, cave, and championship run.',
-];
-
 const typeLabels: Record<PokemonType, string> = {
   normal: 'Normal',
   fighting: 'Fighting',
@@ -237,11 +222,15 @@ export default function App() {
   );
   const [mode, setMode] = useState<Mode>(() => readMode());
   const [pokemon, setPokemon] = useState<PokemonRow[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<PokemonStat[]>([]);
+  const [declarations, setDeclarations] = useState<Declaration[]>([]);
+  const [pokemonLoading, setPokemonLoading] = useState(true);
+  const [backendLoading, setBackendLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
-  const [declarationsVersion, setDeclarationsVersion] = useState(0);
+  const [backendError, setBackendError] = useState('');
   const [promoVisible, setPromoVisible] = useState(true);
   const t = copyFor(language, mode);
+  const loading = pokemonLoading || backendLoading;
 
   useEffect(() => {
     let alive = true;
@@ -254,12 +243,37 @@ export default function App() {
       })
       .catch((error: unknown) => {
         if (alive) {
-          setPokemon(fallbackPokemon.map((item, index) => decorateFallback(item.name, index + 1, mode)));
           setLoadError(error instanceof Error ? error.message : 'Could not load PokeAPI data.');
         }
       })
       .finally(() => {
-        if (alive) setLoading(false);
+        if (alive) setPokemonLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+    setBackendLoading(true);
+    loadBackendData(mode)
+      .then((payload) => {
+        if (alive) {
+          setStats(payload.stats);
+          setDeclarations(payload.latest);
+          setBackendError('');
+        }
+      })
+      .catch((error: unknown) => {
+        if (alive) {
+          setStats([]);
+          setDeclarations([]);
+          setBackendError(error instanceof Error ? error.message : 'Could not load Neon data.');
+        }
+      })
+      .finally(() => {
+        if (alive) setBackendLoading(false);
       });
     return () => {
       alive = false;
@@ -268,12 +282,9 @@ export default function App() {
 
   useEffect(() => {
     const onPop = () => setRoute(normalizeRoute(window.location.pathname));
-    const onStorage = () => setDeclarationsVersion((value) => value + 1);
     window.addEventListener('popstate', onPop);
-    window.addEventListener('favorite-pokemon:declarations-changed', onStorage);
     return () => {
       window.removeEventListener('popstate', onPop);
-      window.removeEventListener('favorite-pokemon:declarations-changed', onStorage);
     };
   }, []);
 
@@ -282,30 +293,12 @@ export default function App() {
     localStorage.setItem('favorite_pokemon_mode', mode);
   }, [mode]);
 
-  const localDeclarations = useMemo(
-    () => getDeclarations(mode),
-    [mode, declarationsVersion],
-  );
+  const displayPokemon = useMemo(() => mergePokemonStats(pokemon, stats), [pokemon, stats]);
 
-  const displayPokemon = useMemo(() => {
-    const localCounts = new Map<number, number>();
-    for (const declaration of localDeclarations) {
-      localCounts.set(declaration.pokemonId, (localCounts.get(declaration.pokemonId) ?? 0) + 1);
-    }
-    return pokemon.map((row) => ({
-      ...row,
-      votes: seededVoteCount(row.id, mode) + (localCounts.get(row.id) ?? 0),
-    }));
-  }, [pokemon, mode, localDeclarations]);
-
-  const sampleDeclarations = useMemo(
-    () => buildSampleDeclarations(displayPokemon, mode),
-    [displayPokemon, mode],
-  );
-  const declarations = useMemo(
-    () => [...localDeclarations, ...sampleDeclarations],
-    [localDeclarations, sampleDeclarations],
-  );
+  function handleDeclarationSubmitted(declaration: Declaration) {
+    setDeclarations((current) => [declaration, ...current].slice(0, 20));
+    setStats((current) => incrementStat(current, declaration));
+  }
 
   function navigate(event: MouseEvent<HTMLAnchorElement>, nextRoute: Route) {
     event.preventDefault();
@@ -385,7 +378,8 @@ export default function App() {
       </header>
 
       <main className="app-shell">
-        {loadError && <p className="message warning">Using local fallback data. {loadError}</p>}
+        {loadError && <p className="message warning">Could not load PokéAPI data. {loadError}</p>}
+        {backendError && <p className="message warning">Could not load Neon declarations. {backendError}</p>}
         {route === '/' && (
           <DeclarePage
             pokemon={displayPokemon}
@@ -393,14 +387,13 @@ export default function App() {
             declarations={declarations}
             mode={mode}
             t={t}
+            onSubmitted={handleDeclarationSubmitted}
           />
         )}
         {route === '/game' && <GamePage pokemon={displayPokemon} mode={mode} t={t} />}
-        {route === '/explore' && (
-          <ExplorePage declarations={declarations} pokemon={displayPokemon} t={t} />
-        )}
+        {route === '/explore' && <ExplorePage declarations={declarations} t={t} />}
         {route === '/pokedex' && (
-          <PokedexPage pokemon={displayPokemon} declarations={declarations} loading={loading} t={t} />
+          <PokedexPage pokemon={displayPokemon} mode={mode} loading={loading} t={t} />
         )}
         {route === '/stats' && (
           <StatsPage pokemon={displayPokemon} declarations={declarations} loading={loading} t={t} />
@@ -440,19 +433,28 @@ function DeclarePage({
   declarations,
   mode,
   t,
+  onSubmitted,
 }: {
   pokemon: PokemonRow[];
   loading: boolean;
   declarations: Declaration[];
   mode: Mode;
   t: Record<string, string>;
+  onSubmitted: (declaration: Declaration) => void;
 }) {
   const [trainerName, setTrainerName] = useState('');
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<PokemonRow | null>(null);
   const [reason, setReason] = useState('');
   const [message, setMessage] = useState('');
-  const alreadyDeclared = hasDeclaredOnDevice(mode);
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [alreadyDeclared, setAlreadyDeclared] = useState(() => hasDeclaredOnDevice(mode));
+
+  useEffect(() => {
+    setAlreadyDeclared(hasDeclaredOnDevice(mode));
+  }, [mode]);
+
   const filteredPokemon = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     return pokemon
@@ -463,19 +465,31 @@ function DeclarePage({
       .slice(0, 8);
   }, [pokemon, query]);
 
-  function submit(event: FormEvent) {
+  async function submit(event: FormEvent) {
     event.preventDefault();
-    if (!selected || trainerName.trim().length < 2 || reason.trim().length < 10 || alreadyDeclared) {
+    if (!selected || trainerName.trim().length < 2 || reason.trim().length < 10 || alreadyDeclared || submitting) {
       return;
     }
-    saveDeclaration({
-      trainerName: trainerName.trim(),
-      pokemonId: selected.id,
-      pokemonName: selected.name,
-      reason: reason.trim(),
-      mode,
-    });
-    setMessage(t.success);
+    setSubmitting(true);
+    setError('');
+    setMessage('');
+    try {
+      const declaration = await createBackendDeclaration({
+        trainerName: trainerName.trim(),
+        pokemonId: selected.id,
+        pokemonName: selected.name,
+        reason: reason.trim(),
+        mode,
+      });
+      markDeclaredOnDevice(mode);
+      setAlreadyDeclared(true);
+      onSubmitted(declaration);
+      setMessage(t.success);
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : 'Could not save declaration.');
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -494,6 +508,7 @@ function DeclarePage({
       <form className="declaration-form" onSubmit={submit}>
         {alreadyDeclared && <p className="message warning">{t.alreadyDeclared}</p>}
         {message && <p className="message success">{message}</p>}
+        {error && <p className="message error">{error}</p>}
         <label className="field">
           <span>{t.trainerName}</span>
           <input
@@ -558,9 +573,15 @@ function DeclarePage({
         <button
           className="primary-button"
           type="submit"
-          disabled={!selected || trainerName.trim().length < 2 || reason.trim().length < 10 || alreadyDeclared}
+          disabled={
+            !selected ||
+            trainerName.trim().length < 2 ||
+            reason.trim().length < 10 ||
+            alreadyDeclared ||
+            submitting
+          }
         >
-          {t.declareButton}
+          {submitting ? 'Saving...' : t.declareButton}
         </button>
       </form>
 
@@ -584,23 +605,20 @@ function DeclarePage({
 
 function ExplorePage({
   declarations,
-  pokemon,
   t,
 }: {
   declarations: Declaration[];
-  pokemon: PokemonRow[];
   t: Record<string, string>;
 }) {
-  const declarationRows = declarations.length ? declarations : buildSampleDeclarations(pokemon, 'favourite');
   return (
     <section className="page">
       <div className="explore-container" aria-label={t.exploreHeading}>
-        {declarationRows.length === 0 && (
+        {declarations.length === 0 && (
           <div className="empty-explore">
             <p>{t.noDeclarations}</p>
           </div>
         )}
-        {declarationRows.map((declaration) => (
+        {declarations.map((declaration) => (
           <article className="reel-item" key={declaration.id}>
             <div className="reel-content">
               <PokemonSprite
@@ -622,12 +640,12 @@ function ExplorePage({
 
 function PokedexPage({
   pokemon,
-  declarations,
+  mode,
   loading,
   t,
 }: {
   pokemon: PokemonRow[];
-  declarations: Declaration[];
+  mode: Mode;
   loading: boolean;
   t: Record<string, string>;
 }) {
@@ -795,7 +813,7 @@ function PokedexPage({
       {modalPokemon && (
         <PokemonModal
           pokemon={modalPokemon}
-          declarations={declarations.filter((item) => item.pokemonId === modalPokemon.id)}
+          mode={mode}
           onClose={() => setModalPokemon(null)}
         />
       )}
@@ -819,7 +837,7 @@ function StatsPage({
   const [expandedType, setExpandedType] = useState(true);
   const sorted = useMemo(() => [...pokemon].sort((a, b) => b.votes - a.votes), [pokemon]);
   const unique = pokemon.filter((row) => row.votes > 0).length;
-  const totalVotes = pokemon.reduce((sum, row) => sum + row.votes, 0) + declarations.length;
+  const totalVotes = pokemon.reduce((sum, row) => sum + row.votes, 0);
   const coverage = pokemon.length ? (unique / pokemon.length) * 100 : 0;
 
   function refresh() {
@@ -1172,13 +1190,39 @@ function Pagination({
 
 function PokemonModal({
   pokemon,
-  declarations,
+  mode,
   onClose,
 }: {
   pokemon: PokemonRow;
-  declarations: Declaration[];
+  mode: Mode;
   onClose: () => void;
 }) {
+  const [declarations, setDeclarations] = useState<Declaration[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let alive = true;
+    setLoading(true);
+    setError('');
+    loadPokemonDeclarations(pokemon.id, mode)
+      .then((rows) => {
+        if (alive) setDeclarations(rows);
+      })
+      .catch((loadError: unknown) => {
+        if (alive) {
+          setDeclarations([]);
+          setError(loadError instanceof Error ? loadError.message : 'Could not load declarations.');
+        }
+      })
+      .finally(() => {
+        if (alive) setLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [pokemon.id, mode]);
+
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true">
       <article className="modal">
@@ -1195,7 +1239,9 @@ function PokemonModal({
           </div>
         </header>
         <div className="declaration-list">
-          {declarations.length === 0 && <p className="empty-state">No local declarations yet.</p>}
+          {loading && <div className="spinner" aria-label="Loading declarations" />}
+          {error && <p className="message warning">{error}</p>}
+          {!loading && declarations.length === 0 && <p className="empty-state">No declarations yet.</p>}
           {declarations.map((declaration) => (
             <article className="declaration-item" key={declaration.id}>
               <strong>{declaration.trainerName}</strong>
@@ -1255,32 +1301,6 @@ function Footer() {
   );
 }
 
-function buildSampleDeclarations(pokemon: PokemonRow[], mode: Mode): Declaration[] {
-  return [...pokemon]
-    .sort((a, b) => b.votes - a.votes)
-    .slice(0, 12)
-    .map((row, index) => ({
-      id: `seed-${mode}-${row.id}`,
-      trainerName: ['Mixel', 'Ari', 'JohtoKid', 'PixelJess', 'Route 3 Sam', 'Nora'][index % 6],
-      pokemonId: row.id,
-      pokemonName: row.name,
-      reason: mode === 'favourite' ? sampleReasons[index % sampleReasons.length] : notFavouriteReason(row.name, index),
-      mode,
-      createdAt: new Date(Date.now() - index * 3600_000).toISOString(),
-    }));
-}
-
-function notFavouriteReason(name: string, index: number): string {
-  const reasons = [
-    `${name} ruined a perfect run and I still remember it.`,
-    'Too smug, too loud, and somehow always in the tall grass.',
-    'The design is memorable, but not in the way I can forgive.',
-    'Every team has a weak spot. This is mine.',
-    'I respect the fans. I simply cannot join them.',
-  ];
-  return reasons[index % reasons.length];
-}
-
 function makePair(pokemon: PokemonRow[]): [PokemonRow, PokemonRow] {
   if (pokemon.length < 2) return [pokemon[0], pokemon[0]];
   const first = pokemon[Math.floor(Math.random() * pokemon.length)];
@@ -1302,17 +1322,25 @@ function readMode(): Mode {
   return raw === 'not_favourite' ? 'not_favourite' : 'favourite';
 }
 
-function decorateFallback(name: string, id: number, mode: Mode): PokemonRow {
-  return {
-    id,
-    name: name.charAt(0).toUpperCase() + name.slice(1),
-    slug: name,
-    number: `#${String(id).padStart(3, '0')}`,
-    sprite: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`,
-    artwork: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`,
-    generation: 'gen1',
-    generationLabel: 'Gen I',
-    types: ['normal'],
-    votes: seededVoteCount(id, mode),
-  };
+function incrementStat(stats: PokemonStat[], declaration: Declaration): PokemonStat[] {
+  const index = stats.findIndex((item) => item.pokemonId === declaration.pokemonId);
+  if (index === -1) {
+    return [
+      ...stats,
+      {
+        pokemonId: declaration.pokemonId,
+        pokemonName: declaration.pokemonName,
+        fanCount: 1,
+      },
+    ];
+  }
+  return stats.map((item, itemIndex) =>
+    itemIndex === index
+      ? {
+          ...item,
+          pokemonName: declaration.pokemonName,
+          fanCount: item.fanCount + 1,
+        }
+      : item,
+  );
 }
