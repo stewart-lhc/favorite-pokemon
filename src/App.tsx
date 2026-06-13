@@ -1045,7 +1045,7 @@ function GamePage({ pokemon, mode, t }: { pokemon: PokemonRow[]; mode: Mode; t: 
             <Coffee size={16} />
             {t.support}
           </a>
-          <p className="game-disclaimer">Data based on declarations from favoritepokemon.vercel.app</p>
+          <p className="game-disclaimer">Data based on declarations stored in our Neon database</p>
         </footer>
       </div>
       {gameOver && (
