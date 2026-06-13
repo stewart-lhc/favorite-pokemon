@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.vite/
+.vercel/
+.npm-cache/
+.tmp/
+*.local
+source-*.png
+source-*.har
+npm-debug.log*

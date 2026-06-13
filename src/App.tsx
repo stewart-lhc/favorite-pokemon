@@ -1,0 +1,1318 @@
+import {
+  Ban,
+  Coffee,
+  Github,
+  Instagram,
+  Music2,
+  Trophy,
+  Youtube,
+  X,
+} from 'lucide-react';
+import { FormEvent, MouseEvent, useEffect, useMemo, useState } from 'react';
+import {
+  allGenerations,
+  fetchPokemonList,
+  generationLabel,
+  seededVoteCount,
+  typeIconUrl,
+} from './lib/pokemon';
+import { getDeclarations, hasDeclaredOnDevice, saveDeclaration } from './lib/storage';
+import type { Declaration, GenerationKey, Mode, PokemonRow, PokemonType } from './types';
+
+type Language = 'en' | 'es';
+type Route = '/' | '/game' | '/explore' | '/pokedex' | '/stats';
+type SortKey = 'number' | 'name' | 'fans';
+type StatusFilter = 'all' | 'revealed' | 'hidden';
+
+const fallbackPokemon = [
+  { name: 'bulbasaur', url: 'https://pokeapi.co/api/v2/pokemon/1/' },
+  { name: 'charmander', url: 'https://pokeapi.co/api/v2/pokemon/4/' },
+  { name: 'squirtle', url: 'https://pokeapi.co/api/v2/pokemon/7/' },
+  { name: 'pikachu', url: 'https://pokeapi.co/api/v2/pokemon/25/' },
+  { name: 'magikarp', url: 'https://pokeapi.co/api/v2/pokemon/129/' },
+  { name: 'mewtwo', url: 'https://pokeapi.co/api/v2/pokemon/150/' },
+  { name: 'mew', url: 'https://pokeapi.co/api/v2/pokemon/151/' },
+  { name: 'eevee', url: 'https://pokeapi.co/api/v2/pokemon/133/' },
+];
+
+const translations = {
+  en: {
+    appTitle: "Every Pokémon is someone's favourite",
+    declare: 'Declare',
+    game: 'Game',
+    explore: 'Explore',
+    pokedex: 'Pokédex',
+    stats: 'Stats',
+    promo: 'Track your Pokémon card collection with Card Codex (supports both English & Japanese cards)',
+    fanDeclaration: 'Fan declaration',
+    declarationLead:
+      'Add your name, choose the Pokémon you would defend anywhere, and make it official.',
+    trainerName: 'Your name',
+    trainerPlaceholder: 'Trainer',
+    favouritePokemon: 'Favourite Pokémon',
+    searchPlaceholder: 'Search by name or number',
+    reason: 'Why is it your favourite?',
+    reasonHelp: 'Tell us why - at least 10 characters',
+    reasonPlaceholder: 'This is where hearts are won.',
+    declareButton: 'Declare favourite',
+    alreadyDeclared: 'You have already declared your favourite Pokémon on this device.',
+    success: 'Your declaration is official.',
+    communityPokedex: 'Community Pokédex',
+    discoveredHeading: 'Pokémon discovered through favourites',
+    searchPokedex: 'Search the Pokédex',
+    sortBy: 'Sort by',
+    generation: 'Generation',
+    allGenerations: 'All generations',
+    grid: 'Grid',
+    list: 'List',
+    all: 'All',
+    revealed: 'Revealed',
+    hidden: 'Hidden',
+    showing: 'Showing',
+    discovered: 'Discovered',
+    hiddenShort: 'Hidden',
+    statsHeading: 'How the universal declaration is going',
+    refresh: 'Refresh',
+    declarations: 'Declarations',
+    uniquePokemon: 'Unique Pokémon',
+    pokedexCovered: 'Pokédex covered',
+    topTen: 'Top 10 most chosen',
+    fullRanking: 'Full ranking',
+    latest: 'Latest 10 declarations',
+    chose: 'chose',
+    noDeclarations: 'No declarations to show right now.',
+    exploreHeading: 'Explore Declarations',
+    loading: 'Loading Pokémon...',
+    whosMoreLoved: "Who's More Loved?",
+    pickTheOne: 'Pick the Pokémon with most love',
+    streak: 'Streak',
+    votes: 'declarations',
+    playAgain: 'Play Again',
+    gameOver: 'Game Over',
+    support: 'Support me on Ko-fi',
+    modeToggle: 'Favourite',
+  },
+  es: {
+    appTitle: 'Cada Pokémon es el favorito de alguien',
+    declare: 'Declarar',
+    game: 'Juego',
+    explore: 'Explorar',
+    pokedex: 'Pokédex',
+    stats: 'Estadísticas',
+    promo: 'Gestiona tu colección de cartas Pokémon con Card Codex',
+    fanDeclaration: 'Declaración fan',
+    declarationLead:
+      'Añade tu nombre, elige el Pokémon que defenderías en cualquier sitio y hazlo oficial.',
+    trainerName: 'Tu nombre',
+    trainerPlaceholder: 'Entrenador/a',
+    favouritePokemon: 'Pokémon favorito',
+    searchPlaceholder: 'Buscar por nombre o número',
+    reason: '¿Por qué es tu favorito?',
+    reasonHelp: 'Cuéntanos por qué - al menos 10 caracteres',
+    reasonPlaceholder: 'Aquí se ganan corazones.',
+    declareButton: 'Declarar favorito',
+    alreadyDeclared: 'Ya has declarado tu Pokémon favorito en este dispositivo.',
+    success: 'Tu declaración es oficial.',
+    communityPokedex: 'Pokédex comunitaria',
+    discoveredHeading: 'Pokémon descubiertos por favoritos',
+    searchPokedex: 'Buscar en la Pokédex',
+    sortBy: 'Ordenar por',
+    generation: 'Generación',
+    allGenerations: 'Todas las generaciones',
+    grid: 'Cuadrícula',
+    list: 'Lista',
+    all: 'Todos',
+    revealed: 'Revelados',
+    hidden: 'Ocultos',
+    showing: 'Mostrando',
+    discovered: 'Descubiertos',
+    hiddenShort: 'Ocultos',
+    statsHeading: 'Cómo va la declaración universal',
+    refresh: 'Actualizar',
+    declarations: 'Declaraciones',
+    uniquePokemon: 'Pokémon únicos',
+    pokedexCovered: 'Pokédex cubierta',
+    topTen: 'Top 10 más elegidos',
+    fullRanking: 'Ranking completo',
+    latest: 'Últimas 10 declaraciones',
+    chose: 'eligió',
+    noDeclarations: 'No hay declaraciones que mostrar por ahora.',
+    exploreHeading: 'Explorar declaraciones',
+    loading: 'Cargando Pokémon...',
+    whosMoreLoved: '¿Quién es más querido?',
+    pickTheOne: 'Elige el Pokémon con más cariño',
+    streak: 'Racha',
+    votes: 'declaraciones',
+    playAgain: 'Jugar otra vez',
+    gameOver: 'Fin del juego',
+    support: 'Apóyame en Ko-fi',
+    modeToggle: 'Favorito',
+  },
+} satisfies Record<Language, Record<string, string>>;
+
+const notFavouriteOverrides = {
+  en: {
+    appTitle: "Every Pokémon is someone's least favourite",
+    fanDeclaration: 'Villain declaration',
+    declarationLead: 'Add your name, choose the Pokémon you would banish, and make it official.',
+    favouritePokemon: 'Least favourite Pokémon',
+    reason: 'Why is it not your favourite?',
+    reasonHelp: 'Make the case - at least 10 characters',
+    reasonPlaceholder: 'This is where grudges become canon.',
+    declareButton: 'Condemn Pokémon',
+    alreadyDeclared: 'You have already declared your least favourite Pokémon on this device.',
+    discoveredHeading: 'Pokémon sentenced through villain declarations',
+    statsHeading: 'How the universal condemnation is going',
+    topTen: 'Top 10 most hated',
+    latest: 'Latest 10 villain declarations',
+    chose: 'condemned',
+    exploreHeading: 'Explore Villain Declarations',
+    whosMoreLoved: 'Which Pokémon is more hated?',
+    pickTheOne: 'Pick the Pokémon with most haters',
+    modeToggle: 'Not My Favourite',
+  },
+  es: {
+    appTitle: 'Cada Pokémon es el menos favorito de alguien',
+    fanDeclaration: 'Declaración villana',
+    declarationLead: 'Añade tu nombre, elige el Pokémon que desterrarías y hazlo oficial.',
+    favouritePokemon: 'Pokémon menos favorito',
+    reason: '¿Por qué no es tu favorito?',
+    reasonHelp: 'Defiende tu caso - al menos 10 caracteres',
+    reasonPlaceholder: 'Aquí las manías se hacen canon.',
+    declareButton: 'Sentenciar Pokémon',
+    alreadyDeclared: 'Ya declaraste tu Pokémon menos favorito en este dispositivo.',
+    discoveredHeading: 'Pokémon sentenciados por declaraciones villanas',
+    statsHeading: 'Cómo va la condena universal',
+    topTen: 'Top 10 más odiados',
+    latest: 'Últimas 10 declaraciones villanas',
+    chose: 'condenó',
+    exploreHeading: 'Explorar declaraciones villanas',
+    whosMoreLoved: '¿Qué Pokémon es más odiado?',
+    pickTheOne: 'Elige el Pokémon con más detractores',
+    modeToggle: 'No favorito',
+  },
+} satisfies Record<Language, Partial<Record<keyof typeof translations.en, string>>>;
+
+const sampleReasons = [
+  'They carried my first team and still feel like home.',
+  'The design is perfect: simple, strange, and instantly memorable.',
+  'My little cousin picked them once and now the whole family cheers.',
+  'They look harmless until the battle turns serious.',
+  'No other Pokémon has this much personality in a tiny sprite.',
+  'A forever partner for every route, cave, and championship run.',
+];
+
+const typeLabels: Record<PokemonType, string> = {
+  normal: 'Normal',
+  fighting: 'Fighting',
+  flying: 'Flying',
+  poison: 'Poison',
+  ground: 'Ground',
+  rock: 'Rock',
+  bug: 'Bug',
+  ghost: 'Ghost',
+  steel: 'Steel',
+  fire: 'Fire',
+  water: 'Water',
+  grass: 'Grass',
+  electric: 'Electric',
+  psychic: 'Psychic',
+  ice: 'Ice',
+  dragon: 'Dragon',
+  dark: 'Dark',
+  fairy: 'Fairy',
+};
+
+function copyFor(language: Language, mode: Mode) {
+  return {
+    ...translations[language],
+    ...(mode === 'not_favourite' ? notFavouriteOverrides[language] : {}),
+  };
+}
+
+export default function App() {
+  const [route, setRoute] = useState<Route>(() => normalizeRoute(window.location.pathname));
+  const [language, setLanguage] = useState<Language>(() =>
+    window.location.pathname.startsWith('/es') ? 'es' : 'en',
+  );
+  const [mode, setMode] = useState<Mode>(() => readMode());
+  const [pokemon, setPokemon] = useState<PokemonRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const [declarationsVersion, setDeclarationsVersion] = useState(0);
+  const [promoVisible, setPromoVisible] = useState(true);
+  const t = copyFor(language, mode);
+
+  useEffect(() => {
+    let alive = true;
+    fetchPokemonList()
+      .then((rows) => {
+        if (alive) {
+          setPokemon(rows);
+          setLoadError('');
+        }
+      })
+      .catch((error: unknown) => {
+        if (alive) {
+          setPokemon(fallbackPokemon.map((item, index) => decorateFallback(item.name, index + 1, mode)));
+          setLoadError(error instanceof Error ? error.message : 'Could not load PokeAPI data.');
+        }
+      })
+      .finally(() => {
+        if (alive) setLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [mode]);
+
+  useEffect(() => {
+    const onPop = () => setRoute(normalizeRoute(window.location.pathname));
+    const onStorage = () => setDeclarationsVersion((value) => value + 1);
+    window.addEventListener('popstate', onPop);
+    window.addEventListener('favorite-pokemon:declarations-changed', onStorage);
+    return () => {
+      window.removeEventListener('popstate', onPop);
+      window.removeEventListener('favorite-pokemon:declarations-changed', onStorage);
+    };
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.dataset.mode = mode;
+    localStorage.setItem('favorite_pokemon_mode', mode);
+  }, [mode]);
+
+  const localDeclarations = useMemo(
+    () => getDeclarations(mode),
+    [mode, declarationsVersion],
+  );
+
+  const displayPokemon = useMemo(() => {
+    const localCounts = new Map<number, number>();
+    for (const declaration of localDeclarations) {
+      localCounts.set(declaration.pokemonId, (localCounts.get(declaration.pokemonId) ?? 0) + 1);
+    }
+    return pokemon.map((row) => ({
+      ...row,
+      votes: seededVoteCount(row.id, mode) + (localCounts.get(row.id) ?? 0),
+    }));
+  }, [pokemon, mode, localDeclarations]);
+
+  const sampleDeclarations = useMemo(
+    () => buildSampleDeclarations(displayPokemon, mode),
+    [displayPokemon, mode],
+  );
+  const declarations = useMemo(
+    () => [...localDeclarations, ...sampleDeclarations],
+    [localDeclarations, sampleDeclarations],
+  );
+
+  function navigate(event: MouseEvent<HTMLAnchorElement>, nextRoute: Route) {
+    event.preventDefault();
+    window.history.pushState({}, '', nextRoute);
+    setRoute(nextRoute);
+  }
+
+  function toggleLanguage() {
+    setLanguage((current) => (current === 'en' ? 'es' : 'en'));
+  }
+
+  function toggleMode() {
+    setMode((current) => (current === 'favourite' ? 'not_favourite' : 'favourite'));
+  }
+
+  return (
+    <>
+      <header className={promoVisible ? 'site-header' : 'site-header site-header--promo-hidden'}>
+        <nav className="navbar" aria-label="Main navigation">
+          <a className="brand" href="/" onClick={(event) => navigate(event, '/')}>
+            <span className="brand-mark" aria-hidden="true" />
+            <span>{t.appTitle}</span>
+          </a>
+          <div className="navbar-right">
+            <div className="nav-links">
+              <NavLink route="/" activeRoute={route} onNavigate={navigate}>
+                {t.declare}
+              </NavLink>
+              <NavLink route="/game" activeRoute={route} onNavigate={navigate}>
+                {t.game}
+              </NavLink>
+              <NavLink route="/explore" activeRoute={route} onNavigate={navigate}>
+                {t.explore}
+              </NavLink>
+              <NavLink route="/pokedex" activeRoute={route} onNavigate={navigate}>
+                {t.pokedex}
+              </NavLink>
+              <NavLink route="/stats" activeRoute={route} onNavigate={navigate}>
+                {t.stats}
+              </NavLink>
+            </div>
+            <div className="navbar-actions">
+              <button
+                type="button"
+                className={`mode-toggle mode-toggle--${mode}`}
+                onClick={toggleMode}
+              >
+                {mode === 'favourite' ? <Trophy size={16} /> : <Ban size={16} />}
+                <span className="mode-toggle-text">{t.modeToggle}</span>
+              </button>
+              <a className="kofi-nav-button" href="https://ko-fi.com/mixel34">
+                <Coffee size={16} />
+                <span className="kofi-text">Ko-fi</span>
+              </a>
+              <a className="discord-nav-button" href="https://discord.gg/9qqUxfeFS5">
+                Discord
+              </a>
+              <button type="button" className="language-toggle" onClick={toggleLanguage}>
+                {language === 'en' ? 'ES' : 'EN'}
+              </button>
+            </div>
+          </div>
+        </nav>
+        {promoVisible && (
+          <div className="promo-banner">
+            <a href="https://cardcodex.com/pokemon/">{t.promo}</a>
+            <button
+              type="button"
+              className="promo-banner-close"
+              aria-label="Close promotion"
+              onClick={() => setPromoVisible(false)}
+            >
+              <X size={14} />
+            </button>
+          </div>
+        )}
+      </header>
+
+      <main className="app-shell">
+        {loadError && <p className="message warning">Using local fallback data. {loadError}</p>}
+        {route === '/' && (
+          <DeclarePage
+            pokemon={displayPokemon}
+            loading={loading}
+            declarations={declarations}
+            mode={mode}
+            t={t}
+          />
+        )}
+        {route === '/game' && <GamePage pokemon={displayPokemon} mode={mode} t={t} />}
+        {route === '/explore' && (
+          <ExplorePage declarations={declarations} pokemon={displayPokemon} t={t} />
+        )}
+        {route === '/pokedex' && (
+          <PokedexPage pokemon={displayPokemon} declarations={declarations} loading={loading} t={t} />
+        )}
+        {route === '/stats' && (
+          <StatsPage pokemon={displayPokemon} declarations={declarations} loading={loading} t={t} />
+        )}
+      </main>
+
+      {route !== '/game' && <Footer />}
+    </>
+  );
+}
+
+function NavLink({
+  route,
+  activeRoute,
+  onNavigate,
+  children,
+}: {
+  route: Route;
+  activeRoute: Route;
+  onNavigate: (event: MouseEvent<HTMLAnchorElement>, route: Route) => void;
+  children: string;
+}) {
+  return (
+    <a
+      href={route}
+      className={route === activeRoute ? 'active' : ''}
+      onClick={(event) => onNavigate(event, route)}
+    >
+      {children}
+    </a>
+  );
+}
+
+function DeclarePage({
+  pokemon,
+  loading,
+  declarations,
+  mode,
+  t,
+}: {
+  pokemon: PokemonRow[];
+  loading: boolean;
+  declarations: Declaration[];
+  mode: Mode;
+  t: Record<string, string>;
+}) {
+  const [trainerName, setTrainerName] = useState('');
+  const [query, setQuery] = useState('');
+  const [selected, setSelected] = useState<PokemonRow | null>(null);
+  const [reason, setReason] = useState('');
+  const [message, setMessage] = useState('');
+  const alreadyDeclared = hasDeclaredOnDevice(mode);
+  const filteredPokemon = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    return pokemon
+      .filter((row) => {
+        if (!normalized) return true;
+        return row.name.toLowerCase().includes(normalized) || String(row.id).includes(normalized);
+      })
+      .slice(0, 8);
+  }, [pokemon, query]);
+
+  function submit(event: FormEvent) {
+    event.preventDefault();
+    if (!selected || trainerName.trim().length < 2 || reason.trim().length < 10 || alreadyDeclared) {
+      return;
+    }
+    saveDeclaration({
+      trainerName: trainerName.trim(),
+      pokemonId: selected.id,
+      pokemonName: selected.name,
+      reason: reason.trim(),
+      mode,
+    });
+    setMessage(t.success);
+  }
+
+  return (
+    <section className="page">
+      <div className="declaration-hero">
+        <div>
+          <p className="eyebrow">{t.fanDeclaration}</p>
+          <h1>{t.appTitle}</h1>
+          <p>{t.declarationLead}</p>
+        </div>
+        <div className="hero-orbit" aria-hidden="true">
+          {selected ? <img src={selected.sprite} alt="" /> : <span>?</span>}
+        </div>
+      </div>
+
+      <form className="declaration-form" onSubmit={submit}>
+        {alreadyDeclared && <p className="message warning">{t.alreadyDeclared}</p>}
+        {message && <p className="message success">{message}</p>}
+        <label className="field">
+          <span>{t.trainerName}</span>
+          <input
+            value={trainerName}
+            onChange={(event) => setTrainerName(event.target.value)}
+            placeholder={t.trainerPlaceholder}
+          />
+        </label>
+
+        <div className="selector">
+          <label htmlFor="pokemon-search">{t.favouritePokemon}</label>
+          <input
+            id="pokemon-search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder={loading ? t.loading : t.searchPlaceholder}
+          />
+          {query && !selected && (
+            <ul className="selector-menu">
+              {filteredPokemon.map((row) => (
+                <li key={row.id}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelected(row);
+                      setQuery(row.name);
+                    }}
+                  >
+                    <img src={row.sprite} alt="" />
+                    <span>{row.name}</span>
+                    <small>{row.number}</small>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {loading && !selected && !query && <div className="spinner" aria-label={t.loading} />}
+          {selected && (
+            <button type="button" className="selected-pokemon" onClick={() => setSelected(null)}>
+              <img src={selected.sprite} alt="" />
+              <div>
+                <strong>{selected.name}</strong>
+                <small>
+                  {selected.number} · {selected.generationLabel}
+                </small>
+              </div>
+            </button>
+          )}
+        </div>
+
+        <label className="field">
+          <span>{t.reason}</span>
+          <small>{t.reasonHelp}</small>
+          <textarea
+            value={reason}
+            onChange={(event) => setReason(event.target.value.slice(0, 300))}
+            placeholder={t.reasonPlaceholder}
+          />
+          <span className="char-count">{reason.length}/300</span>
+        </label>
+
+        <button
+          className="primary-button"
+          type="submit"
+          disabled={!selected || trainerName.trim().length < 2 || reason.trim().length < 10 || alreadyDeclared}
+        >
+          {t.declareButton}
+        </button>
+      </form>
+
+      <section className="latest-strip" aria-label={t.latest}>
+        {declarations.slice(0, 3).map((declaration) => (
+          <article className="latest-card" key={declaration.id}>
+            <PokemonSprite pokemonId={declaration.pokemonId} name={declaration.pokemonName} />
+            <div>
+              <strong>{declaration.trainerName}</strong>
+              <span>
+                {t.chose} {declaration.pokemonName}
+              </span>
+              <p>{declaration.reason}</p>
+            </div>
+          </article>
+        ))}
+      </section>
+    </section>
+  );
+}
+
+function ExplorePage({
+  declarations,
+  pokemon,
+  t,
+}: {
+  declarations: Declaration[];
+  pokemon: PokemonRow[];
+  t: Record<string, string>;
+}) {
+  const declarationRows = declarations.length ? declarations : buildSampleDeclarations(pokemon, 'favourite');
+  return (
+    <section className="page">
+      <div className="explore-container" aria-label={t.exploreHeading}>
+        {declarationRows.length === 0 && (
+          <div className="empty-explore">
+            <p>{t.noDeclarations}</p>
+          </div>
+        )}
+        {declarationRows.map((declaration) => (
+          <article className="reel-item" key={declaration.id}>
+            <div className="reel-content">
+              <PokemonSprite
+                className="reel-pokemon-image"
+                pokemonId={declaration.pokemonId}
+                name={declaration.pokemonName}
+              />
+              <h2 className="reel-trainer">{declaration.trainerName}</h2>
+              <p className="reel-pokemon-name">{declaration.pokemonName}</p>
+              <p className="reel-reason">"{declaration.reason}"</p>
+              <p className="reel-meta">{new Date(declaration.createdAt).toLocaleDateString()}</p>
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function PokedexPage({
+  pokemon,
+  declarations,
+  loading,
+  t,
+}: {
+  pokemon: PokemonRow[];
+  declarations: Declaration[];
+  loading: boolean;
+  t: Record<string, string>;
+}) {
+  const [query, setQuery] = useState('');
+  const [sort, setSort] = useState<SortKey>('number');
+  const [generation, setGeneration] = useState<'all' | GenerationKey>('all');
+  const [status, setStatus] = useState<StatusFilter>('all');
+  const [layout, setLayout] = useState<'grid' | 'list'>('grid');
+  const [page, setPage] = useState(1);
+  const [modalPokemon, setModalPokemon] = useState<PokemonRow | null>(null);
+  const declaredIds = useMemo(() => new Set(pokemon.filter((row) => row.votes > 0).map((row) => row.id)), [pokemon]);
+  const total = pokemon.length;
+  const discovered = declaredIds.size;
+  const progress = total > 0 ? (discovered / total) * 100 : 0;
+
+  const filtered = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    const rows = pokemon
+      .filter((row) => {
+        const revealed = declaredIds.has(row.id);
+        if (status === 'revealed' && !revealed) return false;
+        if (status === 'hidden' && revealed) return false;
+        if (generation !== 'all' && row.generation !== generation) return false;
+        if (!normalized) return true;
+        return row.name.toLowerCase().includes(normalized) || String(row.id).includes(normalized);
+      })
+      .sort((a, b) => {
+        if (sort === 'name') return a.name.localeCompare(b.name);
+        if (sort === 'fans') return b.votes - a.votes;
+        return a.id - b.id;
+      });
+    return rows;
+  }, [pokemon, query, sort, generation, status, declaredIds]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [query, sort, generation, status]);
+
+  const pageSize = 100;
+  const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const pageRows = filtered.slice((page - 1) * pageSize, page * pageSize);
+
+  return (
+    <section className="page">
+      <div className="page-heading">
+        <p className="eyebrow">{t.communityPokedex}</p>
+        <h1>{t.discoveredHeading}</h1>
+      </div>
+      <section className="progress-panel">
+        <div className="progress-copy">
+          <span>
+            {discovered} / {total} Pokémon {t.discovered.toLowerCase()}
+          </span>
+          <strong>{progress.toFixed(1)}%</strong>
+        </div>
+        <div className="progress-track">
+          <div className="progress-fill high" style={{ width: `${progress}%` }} />
+        </div>
+      </section>
+
+      <section className="pokedex-tools">
+        <label className="pokedex-search">
+          <span>{t.searchPokedex}</span>
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder={t.searchPlaceholder}
+          />
+        </label>
+        <label className="pokedex-select">
+          <span>{t.sortBy}</span>
+          <select value={sort} onChange={(event) => setSort(event.target.value as SortKey)}>
+            <option value="number">Number</option>
+            <option value="name">Name</option>
+            <option value="fans">Most fans</option>
+          </select>
+        </label>
+        <label className="pokedex-select">
+          <span>{t.generation}</span>
+          <select
+            value={generation}
+            onChange={(event) => setGeneration(event.target.value as 'all' | GenerationKey)}
+          >
+            <option value="all">{t.allGenerations}</option>
+            {allGenerations().map((item) => (
+              <option key={item.key} value={item.key}>
+                {item.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <div className="segmented-control">
+          <button className={layout === 'grid' ? 'active' : ''} onClick={() => setLayout('grid')}>
+            {t.grid}
+          </button>
+          <button className={layout === 'list' ? 'active' : ''} onClick={() => setLayout('list')}>
+            {t.list}
+          </button>
+        </div>
+      </section>
+
+      <div className="filter-row">
+        {(['all', 'revealed', 'hidden'] as StatusFilter[]).map((item) => (
+          <button
+            key={item}
+            type="button"
+            className={status === item ? 'active' : ''}
+            onClick={() => setStatus(item)}
+          >
+            {t[item]}
+          </button>
+        ))}
+      </div>
+
+      <div className="pokedex-summary">
+        <span>
+          {t.showing} {filtered.length} of {total}
+        </span>
+        <span>
+          {t.discovered}: {discovered}
+        </span>
+        <span>
+          {t.hiddenShort}: {Math.max(0, total - discovered)}
+        </span>
+      </div>
+
+      {loading && <div className="spinner" aria-label={t.loading} />}
+      {!loading && layout === 'grid' && (
+        <div className="pokedex-grid">
+          {pageRows.map((row) => (
+            <button
+              type="button"
+              className="pokemon-card is-revealed"
+              key={row.id}
+              onClick={() => setModalPokemon(row)}
+            >
+              <span className="fan-badge">{row.votes}</span>
+              <img src={row.sprite} alt="" />
+              <strong>{row.name}</strong>
+              <span>{row.number}</span>
+            </button>
+          ))}
+        </div>
+      )}
+      {!loading && layout === 'list' && (
+        <div className="pokedex-list">
+          {pageRows.map((row) => (
+            <button
+              type="button"
+              className="pokedex-list-row is-revealed"
+              key={row.id}
+              onClick={() => setModalPokemon(row)}
+            >
+              <span className="list-number">{row.number}</span>
+              <img src={row.sprite} alt="" />
+              <strong>{row.name}</strong>
+              <span className="list-status">{row.votes} fans</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      <Pagination page={page} pageCount={pageCount} onPageChange={setPage} />
+
+      {modalPokemon && (
+        <PokemonModal
+          pokemon={modalPokemon}
+          declarations={declarations.filter((item) => item.pokemonId === modalPokemon.id)}
+          onClose={() => setModalPokemon(null)}
+        />
+      )}
+    </section>
+  );
+}
+
+function StatsPage({
+  pokemon,
+  declarations,
+  loading,
+  t,
+}: {
+  pokemon: PokemonRow[];
+  declarations: Declaration[];
+  loading: boolean;
+  t: Record<string, string>;
+}) {
+  const [refreshing, setRefreshing] = useState(false);
+  const [expandedGeneration, setExpandedGeneration] = useState(true);
+  const [expandedType, setExpandedType] = useState(true);
+  const sorted = useMemo(() => [...pokemon].sort((a, b) => b.votes - a.votes), [pokemon]);
+  const unique = pokemon.filter((row) => row.votes > 0).length;
+  const totalVotes = pokemon.reduce((sum, row) => sum + row.votes, 0) + declarations.length;
+  const coverage = pokemon.length ? (unique / pokemon.length) * 100 : 0;
+
+  function refresh() {
+    setRefreshing(true);
+    window.setTimeout(() => setRefreshing(false), 550);
+  }
+
+  const generationRows = allGenerations().map((item) => ({
+    label: item.label,
+    votes: pokemon
+      .filter((row) => row.generation === item.key)
+      .reduce((sum, row) => sum + row.votes, 0),
+    sprite: pokemon.find((row) => row.generation === item.key)?.sprite,
+  }));
+
+  const typeRows = Object.keys(typeLabels).map((type) => ({
+    label: typeLabels[type as PokemonType],
+    votes: pokemon
+      .filter((row) => row.types.includes(type as PokemonType))
+      .reduce((sum, row) => sum + row.votes, 0),
+  }));
+
+  return (
+    <section className="page">
+      <div className="page-heading split-heading">
+        <div>
+          <p className="eyebrow">{t.stats}</p>
+          <h1>{t.statsHeading}</h1>
+        </div>
+        <button className="secondary-button" type="button" onClick={refresh} disabled={refreshing}>
+          {refreshing ? 'Refreshing...' : t.refresh}
+        </button>
+      </div>
+
+      {loading && <div className="spinner" aria-label={t.loading} />}
+      {!loading && (
+        <>
+          <div className="metrics-grid">
+            <article className="metric-card">
+              <span>{t.declarations}</span>
+              <strong>{totalVotes.toLocaleString()}</strong>
+            </article>
+            <article className="metric-card">
+              <span>{t.uniquePokemon}</span>
+              <strong>{unique.toLocaleString()}</strong>
+            </article>
+            <article className="metric-card">
+              <span>{t.pokedexCovered}</span>
+              <strong>{coverage.toFixed(1)}%</strong>
+            </article>
+          </div>
+
+          <section className="stats-section">
+            <h2>{t.topTen}</h2>
+            <BarChart rows={sorted.slice(0, 10).map((row) => ({ ...row, label: row.name }))} />
+          </section>
+
+          <section className="stats-section">
+            <h2 onClick={() => setExpandedGeneration((value) => !value)}>
+              By Generation <span>{expandedGeneration ? '▲' : '▼'}</span>
+            </h2>
+            {expandedGeneration && (
+              <BarChart rows={generationRows.sort((a, b) => b.votes - a.votes)} />
+            )}
+          </section>
+
+          <section className="stats-section">
+            <h2 onClick={() => setExpandedType((value) => !value)}>
+              By Type <span>{expandedType ? '▲' : '▼'}</span>
+            </h2>
+            {expandedType && <BarChart rows={typeRows.sort((a, b) => b.votes - a.votes).slice(0, 12)} />}
+          </section>
+
+          <section className="stats-section">
+            <h2>{t.fullRanking}</h2>
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Rank</th>
+                    <th>Pokémon</th>
+                    <th>Votes</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sorted.slice(0, 25).map((row, index) => (
+                    <tr key={row.id}>
+                      <td>#{index + 1}</td>
+                      <td>
+                        <span className="table-pokemon">
+                          <img src={row.sprite} alt="" />
+                          {row.name}
+                        </span>
+                      </td>
+                      <td>{row.votes}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section className="stats-section">
+            <h2>{t.latest}</h2>
+            <div className="latest-grid">
+              {declarations.slice(0, 10).map((declaration) => (
+                <article className="latest-card" key={declaration.id}>
+                  <PokemonSprite pokemonId={declaration.pokemonId} name={declaration.pokemonName} />
+                  <div>
+                    <strong>{declaration.trainerName}</strong>
+                    <span>
+                      {t.chose} {declaration.pokemonName}
+                    </span>
+                    <p>{declaration.reason}</p>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        </>
+      )}
+    </section>
+  );
+}
+
+function GamePage({ pokemon, mode, t }: { pokemon: PokemonRow[]; mode: Mode; t: Record<string, string> }) {
+  const [pair, setPair] = useState<[PokemonRow, PokemonRow] | null>(null);
+  const [revealing, setRevealing] = useState(false);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [streak, setStreak] = useState(0);
+  const [gameOver, setGameOver] = useState(false);
+
+  useEffect(() => {
+    if (pokemon.length >= 2) setPair(makePair(pokemon));
+  }, [pokemon]);
+
+  function choose(row: PokemonRow) {
+    if (!pair || revealing) return;
+    const other = pair.find((item) => item.id !== row.id)!;
+    const correct = mode === 'favourite' ? row.votes >= other.votes : row.votes >= other.votes;
+    setSelectedId(row.id);
+    setRevealing(true);
+    window.setTimeout(() => {
+      if (correct) {
+        setStreak((value) => value + 1);
+        setPair(makePair(pokemon));
+        setSelectedId(null);
+        setRevealing(false);
+      } else {
+        setGameOver(true);
+      }
+    }, 850);
+  }
+
+  if (!pair) {
+    return (
+      <section className="game-page">
+        <a className="game-exit-btn" href="/" aria-label="Exit game">
+          ×
+        </a>
+        <div className="game-loading">
+          <div className="spinner" />
+          <span>{t.loading}</span>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="game-page">
+      <a className="game-exit-btn" href="/" aria-label="Exit game">
+        ×
+      </a>
+      <div className="game-content-wrapper">
+        <header className="game-header">
+          <h1 className="game-title">{t.whosMoreLoved}</h1>
+          <p className="game-subtitle">{t.pickTheOne}</p>
+          <div className="game-streak">
+            <Trophy size={18} />
+            <span>{t.streak}:</span>
+            <strong>{streak}</strong>
+          </div>
+        </header>
+        <div className="game-arena">
+          <GameCard
+            pokemon={pair[0]}
+            selected={selectedId === pair[0].id}
+            revealing={revealing}
+            otherVotes={pair[1].votes}
+            onChoose={choose}
+            t={t}
+          />
+          <div className="game-vs">VS</div>
+          <GameCard
+            pokemon={pair[1]}
+            selected={selectedId === pair[1].id}
+            revealing={revealing}
+            otherVotes={pair[0].votes}
+            onChoose={choose}
+            t={t}
+          />
+        </div>
+        <footer className="game-footer">
+          <a className="game-kofi-link" href="https://ko-fi.com/mixel34">
+            <Coffee size={16} />
+            {t.support}
+          </a>
+          <p className="game-disclaimer">Data based on declarations from favoritepokemon.vercel.app</p>
+        </footer>
+      </div>
+      {gameOver && (
+        <div className="game-over">
+          <div className="game-over-card">
+            <p className="game-over-title">{t.gameOver}</p>
+            <strong className="game-over-streak">{streak}</strong>
+            <p className="game-over-message">{streak > 4 ? 'Legendary.' : 'Nice try!'}</p>
+            <button
+              className="game-play-again"
+              type="button"
+              onClick={() => {
+                setGameOver(false);
+                setRevealing(false);
+                setSelectedId(null);
+                setStreak(0);
+                setPair(makePair(pokemon));
+              }}
+            >
+              {t.playAgain}
+            </button>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function GameCard({
+  pokemon,
+  selected,
+  revealing,
+  otherVotes,
+  onChoose,
+  t,
+}: {
+  pokemon: PokemonRow;
+  selected: boolean;
+  revealing: boolean;
+  otherVotes: number;
+  onChoose: (pokemon: PokemonRow) => void;
+  t: Record<string, string>;
+}) {
+  const winner = pokemon.votes >= otherVotes;
+  const stateClass = revealing
+    ? selected
+      ? winner
+        ? 'game-card--correct'
+        : 'game-card--wrong'
+      : winner
+        ? 'game-card--correct'
+        : ''
+    : 'game-card--playable';
+  return (
+    <button
+      type="button"
+      className={`game-card ${stateClass}`}
+      onClick={() => onChoose(pokemon)}
+      disabled={revealing}
+    >
+      <img className="game-card-artwork" src={pokemon.artwork} alt="" />
+      <strong className="game-card-name">{pokemon.name}</strong>
+      <span className="game-card-id">
+        {pokemon.number} · {generationLabel(pokemon.generation)}
+      </span>
+      <span className="game-card-types">
+        {pokemon.types.map((type) => (
+          <span className="type-badge" key={type}>
+            <img src={typeIconUrl(type)} alt="" />
+            {typeLabels[type]}
+          </span>
+        ))}
+      </span>
+      {revealing && (
+        <span className="game-card-votes">
+          <strong>{pokemon.votes}</strong>
+          <small>{t.votes}</small>
+        </span>
+      )}
+    </button>
+  );
+}
+
+function BarChart({ rows }: { rows: Array<{ label: string; votes: number; sprite?: string }> }) {
+  const max = Math.max(1, ...rows.map((row) => row.votes));
+  return (
+    <div className="bar-chart">
+      {rows.map((row) => (
+        <div className="bar-row" key={row.label}>
+          <div className="bar-label">
+            {row.sprite && <img src={row.sprite} alt="" />}
+            <span>{row.label}</span>
+          </div>
+          <div className="bar-track">
+            <div className="bar-fill" style={{ width: `${(row.votes / max) * 100}%` }} />
+          </div>
+          <strong>{row.votes}</strong>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Pagination({
+  page,
+  pageCount,
+  onPageChange,
+}: {
+  page: number;
+  pageCount: number;
+  onPageChange: (page: number) => void;
+}) {
+  if (pageCount <= 1) return null;
+  return (
+    <div className="modal-pagination">
+      <button className="secondary-button pagination-icon-btn" onClick={() => onPageChange(1)} disabled={page === 1}>
+        ⇤
+      </button>
+      <button className="secondary-button" onClick={() => onPageChange(Math.max(1, page - 1))} disabled={page === 1}>
+        Previous
+      </button>
+      <span className="modal-pagination-total">
+        {page} / {pageCount}
+      </span>
+      <button
+        className="secondary-button"
+        onClick={() => onPageChange(Math.min(pageCount, page + 1))}
+        disabled={page === pageCount}
+      >
+        Next
+      </button>
+      <button
+        className="secondary-button pagination-icon-btn"
+        onClick={() => onPageChange(pageCount)}
+        disabled={page === pageCount}
+      >
+        ⇥
+      </button>
+    </div>
+  );
+}
+
+function PokemonModal({
+  pokemon,
+  declarations,
+  onClose,
+}: {
+  pokemon: PokemonRow;
+  declarations: Declaration[];
+  onClose: () => void;
+}) {
+  return (
+    <div className="modal-backdrop" role="dialog" aria-modal="true">
+      <article className="modal">
+        <button className="icon-button modal-close" type="button" onClick={onClose} aria-label="Close">
+          ×
+        </button>
+        <header className="modal-header">
+          <img src={pokemon.sprite} alt="" />
+          <div>
+            <h2>{pokemon.name}</h2>
+            <p>
+              {pokemon.number} · {pokemon.generationLabel} · {pokemon.votes} fans
+            </p>
+          </div>
+        </header>
+        <div className="declaration-list">
+          {declarations.length === 0 && <p className="empty-state">No local declarations yet.</p>}
+          {declarations.map((declaration) => (
+            <article className="declaration-item" key={declaration.id}>
+              <strong>{declaration.trainerName}</strong>
+              <span>{new Date(declaration.createdAt).toLocaleString()}</span>
+              <p>{declaration.reason}</p>
+            </article>
+          ))}
+        </div>
+      </article>
+    </div>
+  );
+}
+
+function PokemonSprite({
+  pokemonId,
+  name,
+  className,
+}: {
+  pokemonId: number;
+  name: string;
+  className?: string;
+}) {
+  return (
+    <img
+      className={className}
+      src={`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokemonId}.png`}
+      alt={name}
+    />
+  );
+}
+
+function Footer() {
+  return (
+    <footer className="creator-credits">
+      <div className="creator-credits-content">
+        <p>© 2026 Mixel</p>
+        <p className="legal-disclaimer">
+          This site is not affiliated with or endorsed by Nintendo or The Pokémon Company. Pokémon
+          and all related names are trademarks of Nintendo/Creatures Inc./GAME FREAK Inc.
+        </p>
+      </div>
+      <nav aria-label="Creator links">
+        <a href="https://instagram.com/myfav_pokepick" aria-label="Instagram">
+          <Instagram size={20} />
+        </a>
+        <a href="https://www.youtube.com/@Mixel34" aria-label="YouTube">
+          <Youtube size={20} />
+        </a>
+        <a href="https://tiktok.com/@my_fav_pokepick" aria-label="TikTok">
+          <Music2 size={20} />
+        </a>
+        <a href="https://github.com/mixel34p" aria-label="GitHub">
+          <Github size={20} />
+        </a>
+      </nav>
+    </footer>
+  );
+}
+
+function buildSampleDeclarations(pokemon: PokemonRow[], mode: Mode): Declaration[] {
+  return [...pokemon]
+    .sort((a, b) => b.votes - a.votes)
+    .slice(0, 12)
+    .map((row, index) => ({
+      id: `seed-${mode}-${row.id}`,
+      trainerName: ['Mixel', 'Ari', 'JohtoKid', 'PixelJess', 'Route 3 Sam', 'Nora'][index % 6],
+      pokemonId: row.id,
+      pokemonName: row.name,
+      reason: mode === 'favourite' ? sampleReasons[index % sampleReasons.length] : notFavouriteReason(row.name, index),
+      mode,
+      createdAt: new Date(Date.now() - index * 3600_000).toISOString(),
+    }));
+}
+
+function notFavouriteReason(name: string, index: number): string {
+  const reasons = [
+    `${name} ruined a perfect run and I still remember it.`,
+    'Too smug, too loud, and somehow always in the tall grass.',
+    'The design is memorable, but not in the way I can forgive.',
+    'Every team has a weak spot. This is mine.',
+    'I respect the fans. I simply cannot join them.',
+  ];
+  return reasons[index % reasons.length];
+}
+
+function makePair(pokemon: PokemonRow[]): [PokemonRow, PokemonRow] {
+  if (pokemon.length < 2) return [pokemon[0], pokemon[0]];
+  const first = pokemon[Math.floor(Math.random() * pokemon.length)];
+  let second = pokemon[Math.floor(Math.random() * pokemon.length)];
+  while (second.id === first.id) {
+    second = pokemon[Math.floor(Math.random() * pokemon.length)];
+  }
+  return [first, second];
+}
+
+function normalizeRoute(pathname: string): Route {
+  const path = pathname.startsWith('/es') ? pathname.slice(3) || '/' : pathname;
+  if (path === '/game' || path === '/explore' || path === '/pokedex' || path === '/stats') return path;
+  return '/';
+}
+
+function readMode(): Mode {
+  const raw = localStorage.getItem('favorite_pokemon_mode');
+  return raw === 'not_favourite' ? 'not_favourite' : 'favourite';
+}
+
+function decorateFallback(name: string, id: number, mode: Mode): PokemonRow {
+  return {
+    id,
+    name: name.charAt(0).toUpperCase() + name.slice(1),
+    slug: name,
+    number: `#${String(id).padStart(3, '0')}`,
+    sprite: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`,
+    artwork: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`,
+    generation: 'gen1',
+    generationLabel: 'Gen I',
+    types: ['normal'],
+    votes: seededVoteCount(id, mode),
+  };
+}

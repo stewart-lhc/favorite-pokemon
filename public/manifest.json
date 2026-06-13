@@ -1,0 +1,9 @@
+{
+  "name": "Every Pokémon is Someone's Favorite",
+  "short_name": "Fav Pkmn",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#CC0000",
+  "icons": []
+}
