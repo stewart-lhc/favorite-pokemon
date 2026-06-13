@@ -1,4 +1,4 @@
-import type { BackendData, Declaration, DeclarationInput, Mode } from '../types';
+import type { BackendData, Declaration, DeclarationInput, DeclarationResult, Mode } from '../types';
 
 export async function loadBackendData(mode: Mode): Promise<BackendData> {
   const response = await fetch(`/api/data?mode=${encodeURIComponent(mode)}`);
@@ -24,7 +24,7 @@ export async function loadPokemonDeclarations(
   return payload.declarations;
 }
 
-export async function createBackendDeclaration(input: DeclarationInput): Promise<Declaration> {
+export async function createBackendDeclaration(input: DeclarationInput): Promise<DeclarationResult> {
   const response = await fetch('/api/declarations', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -32,10 +32,16 @@ export async function createBackendDeclaration(input: DeclarationInput): Promise
   });
   const payload = (await response.json().catch(() => ({}))) as {
     declaration?: Declaration;
+    fanCount?: number;
+    revealedCount?: number;
     error?: string;
   };
   if (!response.ok || !payload.declaration) {
     throw new Error(payload.error ?? `Declaration request failed: ${response.status}`);
   }
-  return payload.declaration;
+  return {
+    declaration: payload.declaration,
+    fanCount: Number(payload.fanCount ?? 1),
+    revealedCount: Number(payload.revealedCount ?? 1),
+  };
 }

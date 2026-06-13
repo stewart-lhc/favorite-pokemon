@@ -1,6 +1,6 @@
-import { render, screen } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
 
 const pokemonData = [
@@ -54,6 +54,16 @@ const backendData = {
 };
 
 describe('Favorite Pokemon clone', () => {
+  beforeEach(() => {
+    window.history.replaceState({}, '', '/');
+    localStorage.clear();
+    vi.restoreAllMocks();
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
   it('renders the declaration landing page and navigates to core sections', async () => {
     vi.stubGlobal(
       'fetch',
@@ -85,5 +95,63 @@ describe('Favorite Pokemon clone', () => {
 
     await user.click(screen.getByRole('link', { name: 'Game' }));
     expect(await screen.findByRole('heading', { name: /Who's More Loved/i })).toBeInTheDocument();
+  });
+
+  it('shows the source-style success panel after a declaration is saved', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url === '/api/declarations') {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              declaration: {
+                id: 'posted-1',
+                trainerName: 'Ari',
+                pokemonId: 25,
+                pokemonName: 'pikachu',
+                reason: 'Pikachu has been my favourite forever',
+                mode: 'favourite',
+                createdAt: '2026-06-13T10:00:00.000Z',
+              },
+              fanCount: 13,
+              revealedCount: 7,
+            }),
+          });
+        }
+        if (url.startsWith('/api/data')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ stats: [], latest: [] }),
+          });
+        }
+        return Promise.resolve({
+          ok: true,
+          json: async () => pokemonData,
+        });
+      }),
+    );
+
+    const user = userEvent.setup();
+    render(<App />);
+
+    await screen.findByRole('heading', { name: /Every Pokémon is/i });
+    await user.type(screen.getByPlaceholderText('Trainer'), 'Ari');
+    await user.type(screen.getByLabelText('Favourite Pokémon'), 'pika');
+    await user.click(await screen.findByText(/pikachu/i));
+    await user.type(screen.getByPlaceholderText('This is where hearts are won.'), 'Pikachu has been my favourite forever');
+    await user.click(screen.getByRole('button', { name: 'Declare favourite' }));
+
+    expect(await screen.findByRole('heading', { name: 'Declaration saved. That Pokémon has someone now.' })).toBeInTheDocument();
+    expect(screen.getByText('There are already 13 fans of pikachu like you!')).toBeInTheDocument();
+    expect(screen.getByText('7 / 1025 Pokémon revealed - the journey continues...')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '🎉 Download your Pokémon card!' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Official Art' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Pixel Art' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Shiny')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Square \(Instagram\)/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Story \(TikTok\)/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Banner \(X\/Twitter\)/ })).toBeInTheDocument();
   });
 });

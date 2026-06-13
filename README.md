@@ -5,6 +5,7 @@
 ## 功能
 
 - 声明自己最喜欢或最不喜欢的 Pokemon，并写入本项目自己的 Neon Postgres。
+- 提交声明后生成可下载的 Pokemon card，支持 Official Art / Pixel Art、Shiny、Square / Story / Banner 三种尺寸。
 - 浏览 Explore、Pokédex、Stats、Game 五个核心页面。
 - 支持英文/西语切换、Favourite/Not My Favourite 模式切换。
 - 使用 PokéAPI 同步 1025 只 National Dex Pokemon 的真实名称、类型和图片 URL。

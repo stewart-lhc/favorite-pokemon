@@ -52,11 +52,13 @@ describe('backend API client', () => {
           mode: 'favourite',
           createdAt: '2026-06-13T10:00:00.000Z',
         },
+        fanCount: 1,
+        revealedCount: 42,
       }),
     });
     vi.stubGlobal('fetch', fetchMock);
 
-    const declaration = await createBackendDeclaration({
+    const result = await createBackendDeclaration({
       trainerName: 'Ari',
       pokemonId: 778,
       pokemonName: 'Mimikyu',
@@ -64,7 +66,9 @@ describe('backend API client', () => {
       mode: 'favourite',
     });
 
-    expect(declaration.id).toBe('server-id');
+    expect(result.declaration.id).toBe('server-id');
+    expect(result.fanCount).toBe(1);
+    expect(result.revealedCount).toBe(42);
     expect(fetchMock).toHaveBeenCalledWith(
       '/api/declarations',
       expect.objectContaining({

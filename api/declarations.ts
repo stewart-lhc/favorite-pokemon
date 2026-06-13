@@ -67,6 +67,18 @@ async function createDeclaration(request: RequestLike, response: ResponseLike) {
     values (${trainerName}, ${pokemonId}, ${pokemonName}, ${reason}, ${mode})
     returning id, trainer_name, pokemon_id, pokemon_name, reason, type, created_at
   `;
+  const countRows = await sql`
+    select
+      count(*) filter (where pokemon_id = ${pokemonId})::integer as fan_count,
+      count(distinct pokemon_id)::integer as revealed_count
+    from declarations
+    where type = ${mode}
+  `;
+  const counts = countRows[0] ?? {};
 
-  return sendJson(response, 201, { declaration: toDeclaration(rows[0]) });
+  return sendJson(response, 201, {
+    declaration: toDeclaration(rows[0]),
+    fanCount: Number(counts.fan_count ?? 1),
+    revealedCount: Number(counts.revealed_count ?? 1),
+  });
 }

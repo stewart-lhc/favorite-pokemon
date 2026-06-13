@@ -4,14 +4,16 @@ import {
   Github,
   Instagram,
   Music2,
+  Download,
   Trophy,
   Youtube,
   X,
 } from 'lucide-react';
-import { FormEvent, MouseEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, MouseEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   allGenerations,
   fetchPokemonList,
+  formatPokemonName,
   generationLabel,
   mergePokemonStats,
   typeIconUrl,
@@ -21,8 +23,20 @@ import {
   loadBackendData,
   loadPokemonDeclarations,
 } from './lib/backend';
-import { hasDeclaredOnDevice, markDeclaredOnDevice } from './lib/storage';
-import type { Declaration, GenerationKey, Mode, PokemonRow, PokemonStat, PokemonType } from './types';
+import {
+  getLocalDeclarationSummary,
+  hasDeclaredOnDevice,
+  markDeclaredOnDevice,
+} from './lib/storage';
+import type {
+  Declaration,
+  LocalDeclarationSummary,
+  GenerationKey,
+  Mode,
+  PokemonRow,
+  PokemonStat,
+  PokemonType,
+} from './types';
 
 type Language = 'en' | 'es';
 type Route = '/' | '/game' | '/explore' | '/pokedex' | '/stats';
@@ -50,7 +64,15 @@ const translations = {
     reasonPlaceholder: 'This is where hearts are won.',
     declareButton: 'Declare favourite',
     alreadyDeclared: 'You have already declared your favourite Pokémon on this device.',
-    success: 'Your declaration is official.',
+    success: 'Declaration saved. That Pokémon has someone now.',
+    firstFan: 'You are the first official fan of {pokemon} in the world!',
+    moreFans: 'There are already {count} fans of {pokemon} like you!',
+    journeyContinues: '{count} / 1025 Pokémon revealed - the journey continues...',
+    kofiSupport: 'Enjoying the site? Support on Ko-fi',
+    instagramChangeFormMsg:
+      'Want to change your declared Pokémon form? Send a message with your trainer name and Pokémon.',
+    declaredPokemon: 'Your declared Pokémon',
+    viewStats: 'View stats',
     communityPokedex: 'Community Pokédex',
     discoveredHeading: 'Pokémon discovered through favourites',
     searchPokedex: 'Search the Pokédex',
@@ -106,7 +128,15 @@ const translations = {
     reasonPlaceholder: 'Aquí se ganan corazones.',
     declareButton: 'Declarar favorito',
     alreadyDeclared: 'Ya has declarado tu Pokémon favorito en este dispositivo.',
-    success: 'Tu declaración es oficial.',
+    success: 'Declaración guardada. Ese Pokémon ya tiene a alguien.',
+    firstFan: '¡Eres el primer fan oficial de {pokemon} en el mundo!',
+    moreFans: '¡Ya hay {count} fans de {pokemon} como tú!',
+    journeyContinues: '{count} / 1025 Pokémon revelados - el viaje continúa...',
+    kofiSupport: '¿Te gusta la web? Apoya en Ko-fi',
+    instagramChangeFormMsg:
+      '¿Quieres cambiar la forma regional de tu Pokémon? Envía un mensaje con tu nombre de entrenador/a y Pokémon.',
+    declaredPokemon: 'Tu Pokémon declarado',
+    viewStats: 'Ver estadísticas',
     communityPokedex: 'Pokédex comunitaria',
     discoveredHeading: 'Pokémon descubiertos por favoritos',
     searchPokedex: 'Buscar en la Pokédex',
@@ -155,6 +185,11 @@ const notFavouriteOverrides = {
     reasonPlaceholder: 'This is where grudges become canon.',
     declareButton: 'Condemn Pokémon',
     alreadyDeclared: 'You have already declared your least favourite Pokémon on this device.',
+    success: 'Declaration saved. That poor Pokémon.',
+    firstFan: 'You are the first official hater of {pokemon} in the world!',
+    moreFans: 'There are already {count} haters of {pokemon} like you!',
+    journeyContinues: '{count} / 1025 Pokémon sentenced - the reckoning continues...',
+    declaredPokemon: 'Your sentenced Pokémon',
     discoveredHeading: 'Pokémon sentenced through villain declarations',
     statsHeading: 'How the universal condemnation is going',
     topTen: 'Top 10 most hated',
@@ -175,6 +210,11 @@ const notFavouriteOverrides = {
     reasonPlaceholder: 'Aquí las manías se hacen canon.',
     declareButton: 'Sentenciar Pokémon',
     alreadyDeclared: 'Ya declaraste tu Pokémon menos favorito en este dispositivo.',
+    success: 'Declaración guardada. Pobre Pokémon.',
+    firstFan: '¡Eres el primer hater oficial de {pokemon} en el mundo!',
+    moreFans: '¡Ya hay {count} haters de {pokemon} como tú!',
+    journeyContinues: '{count} / 1025 Pokémon sentenciados - el juicio continúa...',
+    declaredPokemon: 'Tu Pokémon sentenciado',
     discoveredHeading: 'Pokémon sentenciados por declaraciones villanas',
     statsHeading: 'Cómo va la condena universal',
     topTen: 'Top 10 más odiados',
@@ -213,6 +253,229 @@ function copyFor(language: Language, mode: Mode) {
     ...translations[language],
     ...(mode === 'not_favourite' ? notFavouriteOverrides[language] : {}),
   };
+}
+
+function template(copy: string, values: Record<string, string>): string {
+  return copy.replace(/\{(\w+)\}/g, (match, key: string) => values[key] ?? match);
+}
+
+type CardFormatKey = 'square' | 'vertical' | 'horizontal';
+type CardArtStyle = 'official' | 'pixel';
+
+const cardFormats: Record<CardFormatKey, { width: number; height: number; label: string; sub: string }> = {
+  square: { width: 1080, height: 1080, label: 'Square (Instagram)', sub: '1080x1080' },
+  vertical: { width: 1080, height: 1920, label: 'Story (TikTok)', sub: '1080x1920' },
+  horizontal: { width: 1200, height: 630, label: 'Banner (X/Twitter)', sub: '1200x630' },
+};
+
+function officialArtworkUrl(pokemonId: number): string {
+  return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${pokemonId}.png`;
+}
+
+function pixelArtworkUrl(pokemonId: number): string {
+  return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokemonId}.png`;
+}
+
+function shinyArtworkUrl(url: string, style: CardArtStyle): string {
+  if (style === 'pixel') {
+    return url.replace('/sprites/pokemon/', '/sprites/pokemon/shiny/');
+  }
+  return url.replace('/official-artwork/', '/official-artwork/shiny/');
+}
+
+function loadCanvasImage(url: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.crossOrigin = 'anonymous';
+    image.onload = () => resolve(image);
+    image.onerror = reject;
+    image.src = url;
+  });
+}
+
+function drawWrappedText(
+  context: CanvasRenderingContext2D,
+  text: string,
+  x: number,
+  y: number,
+  maxWidth: number,
+  lineHeight: number,
+  maxY: number,
+) {
+  const words = text.split(/\s+/);
+  let line = '';
+  for (const word of words) {
+    const next = `${line}${word} `;
+    if (context.measureText(next).width > maxWidth && line) {
+      if (y + lineHeight > maxY) {
+        context.fillText(`${line.trimEnd()}...`, x, y);
+        return;
+      }
+      context.fillText(line.trimEnd(), x, y);
+      line = `${word} `;
+      y += lineHeight;
+    } else {
+      line = next;
+    }
+  }
+  context.fillText(line.trim(), x, y);
+}
+
+function drawPokeballMark(context: CanvasRenderingContext2D, x: number, y: number, radius: number, alpha: number) {
+  context.save();
+  context.globalAlpha = alpha;
+  context.beginPath();
+  context.arc(x, y, radius, 0, Math.PI * 2);
+  context.strokeStyle = '#fff';
+  context.lineWidth = radius * 0.05;
+  context.stroke();
+  context.beginPath();
+  context.moveTo(x - radius, y);
+  context.lineTo(x + radius, y);
+  context.stroke();
+  context.beginPath();
+  context.arc(x, y, radius * 0.25, 0, Math.PI * 2);
+  context.stroke();
+  context.restore();
+}
+
+function drawImageGlow(context: CanvasRenderingContext2D, x: number, y: number, radius: number) {
+  const gradient = context.createRadialGradient(x, y, 0, x, y, radius);
+  gradient.addColorStop(0, 'rgba(255, 255, 255, 0.18)');
+  gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+  context.fillStyle = gradient;
+  context.beginPath();
+  context.arc(x, y, radius, 0, Math.PI * 2);
+  context.fill();
+}
+
+async function generatePokemonCardCanvas(
+  format: CardFormatKey,
+  declaration: Declaration,
+  artStyle: CardArtStyle,
+  shiny: boolean,
+  appTitle: string,
+): Promise<HTMLCanvasElement> {
+  await document.fonts?.ready;
+  const canvas = document.createElement('canvas');
+  const { width, height } = cardFormats[format];
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext('2d');
+  if (!context) {
+    throw new Error('Canvas is not available in this browser.');
+  }
+
+  const fontFamily = getComputedStyle(document.body).fontFamily || 'sans-serif';
+  const pokemonName = formatPokemonName(declaration.pokemonName);
+  const reason = declaration.reason.replace(/\n/g, ' ');
+  const baseImageUrl = artStyle === 'pixel'
+    ? pixelArtworkUrl(declaration.pokemonId)
+    : officialArtworkUrl(declaration.pokemonId);
+  const imageUrl = shiny ? shinyArtworkUrl(baseImageUrl, artStyle) : baseImageUrl;
+  const pokemonImage = await loadCanvasImage(imageUrl).catch((error) => {
+    if (shiny) return loadCanvasImage(baseImageUrl);
+    throw error;
+  });
+
+  context.fillStyle = '#1a1a2e';
+  context.fillRect(0, 0, width, height);
+  drawPokeballMark(context, width * 0.85, height * 0.85, Math.min(width, height) * 0.5, 0.05);
+
+  const headerHeight = height * 0.08;
+  context.fillStyle = '#cc0000';
+  context.fillRect(0, 0, width, headerHeight);
+  context.fillStyle = '#fff';
+  context.textAlign = 'center';
+  context.textBaseline = 'middle';
+  context.font = `${format === 'horizontal' ? 24 : 28}px ${fontFamily}`;
+  context.fillText(appTitle, width / 2, headerHeight / 2);
+
+  if (format === 'horizontal') {
+    const imageColumnWidth = width * 0.45;
+    const imageSize = Math.min(imageColumnWidth, height - headerHeight) * 0.8;
+    const imageX = imageColumnWidth / 2 + 40;
+    const imageY = headerHeight + (height - headerHeight) / 2;
+    drawImageGlow(context, imageX, imageY, imageSize * 0.6);
+    context.drawImage(pokemonImage, imageX - imageSize / 2, imageY - imageSize / 2, imageSize, imageSize);
+
+    const textX = imageColumnWidth + 20;
+    const textWidth = width - textX - 60;
+    const nameY = headerHeight + (height - headerHeight) / 2 - 50;
+    context.textAlign = 'left';
+    context.textBaseline = 'alphabetic';
+    context.font = `bold 64px ${fontFamily}`;
+    context.fillStyle = '#fff';
+    context.fillText(pokemonName, textX, nameY);
+    context.fillStyle = '#cc0000';
+    context.fillRect(textX, nameY + 15, 80, 4);
+    context.font = `32px ${fontFamily}`;
+    context.fillStyle = '#ffcb05';
+    context.fillText(`✦ ${declaration.trainerName}`, textX, nameY + 65);
+    if (reason) {
+      context.font = `italic ${reason.length > 200 ? 20 : 26}px ${fontFamily}`;
+      context.fillStyle = 'rgba(255, 255, 255, 0.85)';
+      drawWrappedText(context, `"${reason}"`, textX, nameY + 115, textWidth, 39, height - 55);
+    }
+  } else if (format === 'square') {
+    const imageSize = (height - headerHeight - 60) * 0.5;
+    const imageX = width / 2;
+    const imageY = headerHeight + imageSize / 2 + 70;
+    const drawnSize = imageSize * 0.9;
+    drawImageGlow(context, imageX, imageY, drawnSize * 0.6);
+    context.drawImage(pokemonImage, imageX - drawnSize / 2, imageY - drawnSize / 2, drawnSize, drawnSize);
+    context.textAlign = 'center';
+    context.textBaseline = 'alphabetic';
+    const nameY = headerHeight + imageSize + 110;
+    context.font = `bold 60px ${fontFamily}`;
+    context.fillStyle = '#fff';
+    context.fillText(pokemonName, imageX, nameY);
+    context.font = `32px ${fontFamily}`;
+    context.fillStyle = '#ffcb05';
+    context.fillText(`✦ ${declaration.trainerName}`, imageX, nameY + 60);
+    if (reason) {
+      context.font = `italic ${reason.length > 200 ? 22 : 26}px ${fontFamily}`;
+      context.fillStyle = 'rgba(255, 255, 255, 0.85)';
+      drawWrappedText(context, `"${reason}"`, imageX, nameY + 120, width * 0.8, 39, height - 55);
+    }
+  } else {
+    const imageX = width / 2;
+    const imageSize = width * 0.55;
+    const contentHeight = height - headerHeight - 60;
+    const reservedTextHeight = imageSize + 240;
+    const imageY = headerHeight + (contentHeight - reservedTextHeight) / 2 + imageSize / 2;
+    drawImageGlow(context, imageX, imageY, imageSize * 0.6);
+    context.drawImage(pokemonImage, imageX - imageSize / 2, imageY - imageSize / 2, imageSize, imageSize);
+    context.textAlign = 'center';
+    context.textBaseline = 'alphabetic';
+    const nameY = imageY + imageSize / 2 + 80;
+    context.font = `bold 60px ${fontFamily}`;
+    context.fillStyle = '#fff';
+    context.fillText(pokemonName, imageX, nameY);
+    context.font = `32px ${fontFamily}`;
+    context.fillStyle = '#ffcb05';
+    context.fillText(`✦ ${declaration.trainerName}`, imageX, nameY + 80);
+    if (reason) {
+      context.font = `italic ${reason.length > 300 ? 22 : 26}px ${fontFamily}`;
+      context.fillStyle = 'rgba(255, 255, 255, 0.85)';
+      drawWrappedText(context, `"${reason}"`, imageX, nameY + 160, width * 0.85, 39, height - 55);
+    }
+  }
+
+  context.font = `18px ${fontFamily}`;
+  context.fillStyle = 'rgba(255, 203, 5, 0.55)';
+  context.textAlign = 'center';
+  context.textBaseline = 'bottom';
+  context.fillText('favipokemon.vercel.app', width / 2, height - 30);
+  return canvas;
+}
+
+function downloadCard(canvas: HTMLCanvasElement, pokemonName: string, format: CardFormatKey, shiny: boolean) {
+  const link = document.createElement('a');
+  const slug = pokemonName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  link.download = `my-favorite-${slug || 'pokemon'}${shiny ? '-shiny' : ''}-${format}.png`;
+  link.href = canvas.toDataURL('image/png');
+  link.click();
 }
 
 export default function App() {
@@ -446,13 +709,16 @@ function DeclarePage({
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<PokemonRow | null>(null);
   const [reason, setReason] = useState('');
-  const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [alreadyDeclared, setAlreadyDeclared] = useState(() => hasDeclaredOnDevice(mode));
+  const [submittedSummary, setSubmittedSummary] = useState<LocalDeclarationSummary | null>(() =>
+    getLocalDeclarationSummary(mode),
+  );
 
   useEffect(() => {
     setAlreadyDeclared(hasDeclaredOnDevice(mode));
+    setSubmittedSummary(getLocalDeclarationSummary(mode));
   }, [mode]);
 
   const filteredPokemon = useMemo(() => {
@@ -465,6 +731,12 @@ function DeclarePage({
       .slice(0, 8);
   }, [pokemon, query]);
 
+  const heroPokemon = useMemo(() => {
+    if (selected) return selected;
+    if (!submittedSummary) return null;
+    return pokemon.find((row) => row.id === submittedSummary.declaration.pokemonId) ?? null;
+  }, [pokemon, selected, submittedSummary]);
+
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (!selected || trainerName.trim().length < 2 || reason.trim().length < 10 || alreadyDeclared || submitting) {
@@ -472,19 +744,23 @@ function DeclarePage({
     }
     setSubmitting(true);
     setError('');
-    setMessage('');
     try {
-      const declaration = await createBackendDeclaration({
+      const result = await createBackendDeclaration({
         trainerName: trainerName.trim(),
         pokemonId: selected.id,
         pokemonName: selected.name,
         reason: reason.trim(),
         mode,
       });
-      markDeclaredOnDevice(mode);
+      const summary = {
+        declaration: result.declaration,
+        fanCount: result.fanCount,
+        revealedCount: result.revealedCount,
+      };
+      markDeclaredOnDevice(mode, summary);
       setAlreadyDeclared(true);
-      onSubmitted(declaration);
-      setMessage(t.success);
+      setSubmittedSummary(summary);
+      onSubmitted(result.declaration);
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : 'Could not save declaration.');
     } finally {
@@ -501,89 +777,91 @@ function DeclarePage({
           <p>{t.declarationLead}</p>
         </div>
         <div className="hero-orbit" aria-hidden="true">
-          {selected ? <img src={selected.sprite} alt="" /> : <span>?</span>}
+          {heroPokemon ? <img src={heroPokemon.sprite} alt="" /> : <span>?</span>}
         </div>
       </div>
 
-      <form className="declaration-form" onSubmit={submit}>
-        {alreadyDeclared && <p className="message warning">{t.alreadyDeclared}</p>}
-        {message && <p className="message success">{message}</p>}
-        {error && <p className="message error">{error}</p>}
-        <label className="field">
-          <span>{t.trainerName}</span>
-          <input
-            value={trainerName}
-            onChange={(event) => setTrainerName(event.target.value)}
-            placeholder={t.trainerPlaceholder}
-          />
-        </label>
+      {alreadyDeclared ? (
+        <DeclarationSuccessPanel summary={submittedSummary} t={t} />
+      ) : (
+        <form className="declaration-form" onSubmit={submit}>
+          {error && <p className="message error">{error}</p>}
+          <label className="field">
+            <span>{t.trainerName}</span>
+            <input
+              value={trainerName}
+              onChange={(event) => setTrainerName(event.target.value)}
+              placeholder={t.trainerPlaceholder}
+            />
+          </label>
 
-        <div className="selector">
-          <label htmlFor="pokemon-search">{t.favouritePokemon}</label>
-          <input
-            id="pokemon-search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder={loading ? t.loading : t.searchPlaceholder}
-          />
-          {query && !selected && (
-            <ul className="selector-menu">
-              {filteredPokemon.map((row) => (
-                <li key={row.id}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelected(row);
-                      setQuery(row.name);
-                    }}
-                  >
-                    <img src={row.sprite} alt="" />
-                    <span>{row.name}</span>
-                    <small>{row.number}</small>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-          {loading && !selected && !query && <div className="spinner" aria-label={t.loading} />}
-          {selected && (
-            <button type="button" className="selected-pokemon" onClick={() => setSelected(null)}>
-              <img src={selected.sprite} alt="" />
-              <div>
-                <strong>{selected.name}</strong>
-                <small>
-                  {selected.number} · {selected.generationLabel}
-                </small>
-              </div>
-            </button>
-          )}
-        </div>
+          <div className="selector">
+            <label htmlFor="pokemon-search">{t.favouritePokemon}</label>
+            <input
+              id="pokemon-search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder={loading ? t.loading : t.searchPlaceholder}
+            />
+            {query && !selected && (
+              <ul className="selector-menu">
+                {filteredPokemon.map((row) => (
+                  <li key={row.id}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelected(row);
+                        setQuery(row.name);
+                      }}
+                    >
+                      <img src={row.sprite} alt="" />
+                      <span>{row.name}</span>
+                      <small>{row.number}</small>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {loading && !selected && !query && <div className="spinner" aria-label={t.loading} />}
+            {selected && (
+              <button type="button" className="selected-pokemon" onClick={() => setSelected(null)}>
+                <img src={selected.sprite} alt="" />
+                <div>
+                  <strong>{selected.name}</strong>
+                  <small>
+                    {selected.number} · {selected.generationLabel}
+                  </small>
+                </div>
+              </button>
+            )}
+          </div>
 
-        <label className="field">
-          <span>{t.reason}</span>
-          <small>{t.reasonHelp}</small>
-          <textarea
-            value={reason}
-            onChange={(event) => setReason(event.target.value.slice(0, 300))}
-            placeholder={t.reasonPlaceholder}
-          />
-          <span className="char-count">{reason.length}/300</span>
-        </label>
+          <label className="field">
+            <span>{t.reason}</span>
+            <small>{t.reasonHelp}</small>
+            <textarea
+              value={reason}
+              onChange={(event) => setReason(event.target.value.slice(0, 300))}
+              placeholder={t.reasonPlaceholder}
+            />
+            <span className="char-count">{reason.length}/300</span>
+          </label>
 
-        <button
-          className="primary-button"
-          type="submit"
-          disabled={
-            !selected ||
-            trainerName.trim().length < 2 ||
-            reason.trim().length < 10 ||
-            alreadyDeclared ||
-            submitting
-          }
-        >
-          {submitting ? 'Saving...' : t.declareButton}
-        </button>
-      </form>
+          <button
+            className="primary-button"
+            type="submit"
+            disabled={
+              !selected ||
+              trainerName.trim().length < 2 ||
+              reason.trim().length < 10 ||
+              alreadyDeclared ||
+              submitting
+            }
+          >
+            {submitting ? 'Saving...' : t.declareButton}
+          </button>
+        </form>
+      )}
 
       <section className="latest-strip" aria-label={t.latest}>
         {declarations.slice(0, 3).map((declaration) => (
@@ -599,6 +877,168 @@ function DeclarePage({
           </article>
         ))}
       </section>
+    </section>
+  );
+}
+
+function DeclarationSuccessPanel({
+  summary,
+  t,
+}: {
+  summary: LocalDeclarationSummary | null;
+  t: Record<string, string>;
+}) {
+  const declaration = summary?.declaration;
+  const pokemonName = declaration?.pokemonName ?? '';
+  const fanMessage = summary
+    ? template(summary.fanCount === 1 ? t.firstFan : t.moreFans, {
+      count: String(summary.fanCount),
+      pokemon: pokemonName,
+    })
+    : t.alreadyDeclared;
+
+  return (
+    <div className="declaration-form declaration-success-panel">
+      <a className="success-kofi-link" href="https://ko-fi.com/mixel34" target="_blank" rel="noopener noreferrer">
+        <Coffee size={16} />
+        {t.kofiSupport}
+      </a>
+      <h2>{t.success}</h2>
+      {declaration ? (
+        <>
+          <PokemonSprite className="success-pokemon" pokemonId={declaration.pokemonId} name={pokemonName} />
+          <p className="message success">{fanMessage}</p>
+          <p className="success-progress">
+            {template(t.journeyContinues, { count: String(summary.revealedCount) })}
+          </p>
+          <div className="success-declaration">
+            <span>{t.declaredPokemon}</span>
+            <strong>{pokemonName}</strong>
+            <p>"{declaration.reason}"</p>
+          </div>
+          <p className="success-note">{t.instagramChangeFormMsg}</p>
+          <PokemonCardDownloader declaration={declaration} appTitle={t.appTitle} />
+        </>
+      ) : (
+        <p className="message warning">{fanMessage}</p>
+      )}
+    </div>
+  );
+}
+
+function PokemonCardDownloader({ declaration, appTitle }: { declaration: Declaration; appTitle: string }) {
+  const [artStyle, setArtStyle] = useState<CardArtStyle>('official');
+  const [format, setFormat] = useState<CardFormatKey>('vertical');
+  const [shiny, setShiny] = useState(false);
+  const [canvases, setCanvases] = useState<Partial<Record<CardFormatKey, HTMLCanvasElement>>>({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [downloaded, setDownloaded] = useState<Partial<Record<CardFormatKey, boolean>>>({});
+  const previewRef = useRef<HTMLDivElement>(null);
+
+  const generateCards = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const entries = await Promise.all(
+        (Object.keys(cardFormats) as CardFormatKey[]).map(async (key) => [
+          key,
+          await generatePokemonCardCanvas(key, declaration, artStyle, shiny, appTitle),
+        ] as const),
+      );
+      setCanvases(Object.fromEntries(entries));
+    } catch (cardError) {
+      setError(cardError instanceof Error ? cardError.message : 'Could not generate the card. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, [appTitle, artStyle, declaration, shiny]);
+
+  useEffect(() => {
+    void generateCards();
+  }, [generateCards]);
+
+  useEffect(() => {
+    const sourceCanvas = canvases[format];
+    const target = previewRef.current;
+    if (!sourceCanvas || !target) return;
+
+    target.innerHTML = '';
+    const previewCanvas = document.createElement('canvas');
+    const previewWidth = format === 'horizontal' ? 520 : 360;
+    const scale = previewWidth / sourceCanvas.width;
+    previewCanvas.width = previewWidth;
+    previewCanvas.height = sourceCanvas.height * scale;
+    previewCanvas.getContext('2d')?.drawImage(sourceCanvas, 0, 0, previewCanvas.width, previewCanvas.height);
+    target.appendChild(previewCanvas);
+  }, [canvases, format]);
+
+  function handleDownload(nextFormat: CardFormatKey) {
+    setFormat(nextFormat);
+    const canvas = canvases[nextFormat];
+    if (!canvas) return;
+    downloadCard(canvas, declaration.pokemonName, nextFormat, shiny);
+    setDownloaded((current) => ({ ...current, [nextFormat]: true }));
+    window.setTimeout(() => {
+      setDownloaded((current) => ({ ...current, [nextFormat]: false }));
+    }, 2400);
+  }
+
+  return (
+    <section className="share-card-section" aria-label="Download your Pokemon card">
+      <h3 className="share-card-title">🎉 Download your Pokémon card!</h3>
+      <div className="share-card-controls">
+        <div className="share-art-toggle" role="group" aria-label="Card art style">
+          <button
+            type="button"
+            className={artStyle === 'official' ? 'active' : ''}
+            onClick={() => setArtStyle('official')}
+          >
+            Official Art
+          </button>
+          <button
+            type="button"
+            className={artStyle === 'pixel' ? 'active' : ''}
+            onClick={() => setArtStyle('pixel')}
+          >
+            Pixel Art
+          </button>
+        </div>
+        <label className="share-shiny-check">
+          <input
+            type="checkbox"
+            checked={shiny}
+            onChange={(event) => setShiny(event.target.checked)}
+          />
+          <span className="share-shiny-box" aria-hidden="true" />
+          <span>Shiny</span>
+        </label>
+      </div>
+
+      <div className="share-download-row">
+        {(Object.entries(cardFormats) as Array<[CardFormatKey, typeof cardFormats[CardFormatKey]]>).map(([key, item]) => (
+          <button
+            key={key}
+            type="button"
+            className={`share-dl-btn ${format === key ? 'active' : ''}`}
+            onClick={() => handleDownload(key)}
+            onMouseEnter={() => setFormat(key)}
+            disabled={loading || Boolean(error)}
+          >
+            <Download size={24} />
+            <span className="share-dl-info">
+              <span className="share-dl-label">{item.label}</span>
+              <span className="share-dl-sub">{downloaded[key] ? '✓ Downloaded!' : item.sub}</span>
+            </span>
+          </button>
+        ))}
+      </div>
+
+      <div className="share-preview-area">
+        {loading && <div className="spinner" aria-label="Generating cards..." />}
+        {error && <p className="message error">{error}</p>}
+        <div ref={previewRef} className="share-preview-canvas" />
+      </div>
     </section>
   );
 }

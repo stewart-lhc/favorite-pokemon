@@ -77,6 +77,18 @@ export type Declaration = DeclarationInput & {
   createdAt: string;
 };
 
+export type DeclarationResult = {
+  declaration: Declaration;
+  fanCount: number;
+  revealedCount: number;
+};
+
+export type LocalDeclarationSummary = {
+  declaration: Declaration;
+  fanCount: number;
+  revealedCount: number;
+};
+
 export type BackendData = {
   stats: PokemonStat[];
   latest: Declaration[];
