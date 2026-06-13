@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="google-site-verification" content="4ZhECbls7bJiq7jnLXlWJhtTlFLGoWa8s69XTEKrmi8" />
+  <title>Every Pokémon is Someone's Favorite | Collective Pokédex</title>
+  <meta name="description"
+    content="Declare your favorite Pokémon and help fill our collective Pokédex! Discover which Pokémon are loved by trainers worldwide. Every Pokémon is someone's favorite." />
+
+  <!-- Open Graph / Facebook / Discord -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://favoritepokemon.vercel.app/" />
+  <meta property="og:title" content="Every Pokémon is Someone's Favorite" />
+  <meta property="og:description"
+    content="Declare your favorite Pokémon and help fill our collective Pokédex! Discover which Pokémon are loved by trainers worldwide." />
+  <meta property="og:image" content="https://favoritepokemon.vercel.app/og-image.jpg" />
+
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary_large_image" />
+  <meta property="twitter:url" content="https://favoritepokemon.vercel.app/" />
+  <meta property="twitter:title" content="Every Pokémon is Someone's Favorite" />
+  <meta property="twitter:description"
+    content="Declare your favorite Pokémon and help fill our collective Pokédex! Discover which Pokémon are loved by trainers worldwide." />
+  <meta property="twitter:image" content="https://favoritepokemon.vercel.app/og-image.jpg" />
+
+  <!-- Canonical and Alternate Languages -->
+  <link rel="canonical" href="https://favoritepokemon.vercel.app/" />
+  <link rel="alternate" hreflang="en" href="https://favoritepokemon.vercel.app/" />
+  <link rel="alternate" hreflang="es" href="https://favoritepokemon.vercel.app/es" />
+  <link rel="alternate" hreflang="x-default" href="https://favoritepokemon.vercel.app/" />
+
+  <!-- Crawlers and PWA -->
+  <meta name="robots" content="index, follow" />
+  <meta name="theme-color" content="#CC0000" />
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="icon" type="image/png" href="/pokeball.png" />
+
+  <!-- Structured Data -->
+  <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Every Pokémon is Someone's Favorite",
+        "url": "https://favoritepokemon.vercel.app/",
+        "description": "A web application where users can declare their favorite Pokémon and collectively fill out a global Pokédex.",
+        "applicationCategory": "EntertainmentApplication",
+        "operatingSystem": "All"
+      }
+    </script>
+  <script type="module" crossorigin src="/assets/index-Chq7y7db.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-BnrJbIkN.css">
+</head>
+
+<body>
+  <div id="root"></div>
+</body>
+
+</html>

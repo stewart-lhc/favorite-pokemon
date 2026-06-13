@@ -11,9 +11,17 @@
   --danger: #d6332a;
   color: var(--dark-navy);
   background: var(--paper);
-  font-family: "Courier New", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-family: PokemonDPPro, "Courier New", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
+}
+
+@font-face {
+  font-family: PokemonDPPro;
+  src: url("/assets/power-green.ttf") format("truetype");
+  font-weight: 400 950;
+  font-style: normal;
+  font-display: swap;
 }
 
 [data-mode="not_favourite"] {
