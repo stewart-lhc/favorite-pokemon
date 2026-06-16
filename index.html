@@ -3,29 +3,175 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Every Pokémon is Someone's Favorite | Collective Pokédex</title>
+    <title>Favmon | Every Pokémon is Someone's Favorite</title>
     <meta
       name="description"
-      content="Declare your favorite Pokémon and help fill our collective Pokédex! Discover which Pokémon are loved by trainers worldwide. Every Pokémon is someone's favorite."
+      content="Declare your favorite or least favorite Pokémon, reveal community Pokédex rankings, and download shareable trainer cards on Favmon."
     />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <meta name="googlebot" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <meta http-equiv="content-language" content="en" />
+    <meta name="application-name" content="Favmon" />
+    <meta name="apple-mobile-web-app-title" content="Favmon" />
+    <meta name="author" content="Mixel" />
+    <meta name="creator" content="Mixel" />
+    <meta name="publisher" content="Favmon" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="theme-color" content="#e3350d" />
+    <meta name="color-scheme" content="light dark" />
+    <meta
+      name="keywords"
+      content="Favmon, favorite pokemon, Pokémon fan vote, community Pokédex, Pokemon ranking, Pokemon social card, least favorite Pokemon"
+    />
+    <link rel="canonical" href="https://favmon.com/" />
+    <link rel="alternate" hreflang="x-default" href="https://favmon.com/" />
+    <link rel="alternate" hreflang="en" href="https://favmon.com/" />
+    <link rel="alternate" hreflang="ja" href="https://favmon.com/ja" />
+    <link rel="alternate" hreflang="ko" href="https://favmon.com/ko" />
+    <link rel="alternate" hreflang="zh-CN" href="https://favmon.com/zh-cn" />
+    <link rel="alternate" hreflang="zh-TW" href="https://favmon.com/zh-tw" />
+    <link rel="alternate" hreflang="zh-HK" href="https://favmon.com/zh-hk" />
+    <link rel="alternate" hreflang="es" href="https://favmon.com/es" />
+    <link rel="alternate" hreflang="es-CL" href="https://favmon.com/es-cl" />
+    <link rel="alternate" hreflang="es-PR" href="https://favmon.com/es-pr" />
+    <link rel="alternate" hreflang="es-CR" href="https://favmon.com/es-cr" />
+    <link rel="alternate" hreflang="fr" href="https://favmon.com/fr" />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://favorite-pokemon-three.vercel.app/" />
-    <meta property="og:title" content="Every Pokémon is Someone's Favorite" />
+    <meta property="og:site_name" content="Favmon" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:locale:alternate" content="ja_JP" />
+    <meta property="og:locale:alternate" content="ko_KR" />
+    <meta property="og:locale:alternate" content="zh_CN" />
+    <meta property="og:locale:alternate" content="zh_TW" />
+    <meta property="og:locale:alternate" content="es_ES" />
+    <meta property="og:locale:alternate" content="fr_FR" />
+    <meta property="og:url" content="https://favmon.com/" />
+    <meta property="og:title" content="Every Pokémon is Someone's Favorite | Favmon" />
     <meta
       property="og:description"
-      content="Declare your favorite Pokémon and discover which Pokémon are loved by trainers worldwide."
+      content="Declare your favorite or least favorite Pokémon, reveal community Pokédex rankings, and download shareable trainer cards on Favmon."
     />
-    <meta property="og:image" content="/og-image.png" />
-    <meta property="twitter:card" content="summary_large_image" />
-    <meta property="twitter:title" content="Every Pokémon is Someone's Favorite" />
+    <meta property="og:image" content="https://favmon.com/og-image.png" />
+    <meta property="og:image:secure_url" content="https://favmon.com/og-image.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Every Pokémon is Someone's Favorite community Pokédex social banner" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:domain" content="favmon.com" />
+    <meta name="twitter:url" content="https://favmon.com/" />
+    <meta name="twitter:title" content="Every Pokémon is Someone's Favorite | Favmon" />
     <meta
-      property="twitter:description"
-      content="Declare your favorite Pokémon and discover which Pokémon are loved by trainers worldwide."
+      name="twitter:description"
+      content="Declare your favorite or least favorite Pokémon, reveal community Pokédex rankings, and download shareable trainer cards on Favmon."
     />
-    <meta property="twitter:image" content="/og-image.png" />
-    <meta name="theme-color" content="#CC0000" />
+    <meta name="twitter:image" content="https://favmon.com/twitter-card.png" />
+    <meta name="twitter:image:alt" content="Every Pokémon is Someone's Favorite social sharing card" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" sizes="any" />
+    <link rel="icon" href="/favicon-32x32.png" type="image/png" sizes="32x32" />
+    <link rel="icon" href="/favicon-16x16.png" type="image/png" sizes="16x16" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180" />
+    <link rel="mask-icon" href="/mask-icon.svg" color="#e3350d" />
+    <link rel="preload" href="/brand/brand-mark.svg" as="image" type="image/svg+xml" />
     <link rel="manifest" href="/manifest.json" />
-    <link rel="icon" type="image/png" href="/pokeball.png" />
+    <script id="structured-data" type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://favmon.com/#organization",
+            "name": "Favmon",
+            "alternateName": "Every Pokémon is Someone's Favorite",
+            "url": "https://favmon.com/",
+            "logo": "https://favmon.com/icon-512x512.png"
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://favmon.com/#website",
+            "url": "https://favmon.com/",
+            "name": "Favmon",
+            "alternateName": "Every Pokémon is Someone's Favorite",
+            "description": "A fan-made community Pokédex for declaring favorite and least favorite Pokémon, exploring rankings, and creating social share cards.",
+            "inLanguage": ["en", "ja", "ko", "zh-CN", "zh-TW", "zh-HK", "es", "fr"],
+            "publisher": { "@id": "https://favmon.com/#organization" },
+            "isAccessibleForFree": true
+          },
+          {
+            "@type": "WebApplication",
+            "@id": "https://favmon.com/#webapp",
+            "name": "Favmon",
+            "alternateName": "Every Pokémon is Someone's Favorite",
+            "url": "https://favmon.com/",
+            "applicationCategory": "GameApplication",
+            "operatingSystem": "Web",
+            "isAccessibleForFree": true,
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "USD"
+            },
+            "featureList": [
+              "Declare a favorite or least favorite Pokémon",
+              "Explore community Pokédex rankings",
+              "Play a Pokémon popularity guessing game",
+              "Download square, story, and banner social cards"
+            ],
+            "publisher": { "@id": "https://favmon.com/#organization" }
+          },
+          {
+            "@type": "WebPage",
+            "@id": "https://favmon.com/#webpage",
+            "url": "https://favmon.com/",
+            "name": "Every Pokémon is Someone's Favorite | Favmon",
+            "description": "Declare your favorite or least favorite Pokémon, reveal community Pokédex rankings, and download shareable trainer cards on Favmon.",
+            "inLanguage": "en",
+            "isPartOf": { "@id": "https://favmon.com/#website" },
+            "publisher": { "@id": "https://favmon.com/#organization" }
+          },
+          {
+            "@type": "FAQPage",
+            "@id": "https://favmon.com/#faq",
+            "inLanguage": "en",
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "What is Favmon?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Favmon is a fan-made community Pokédex where trainers declare their favorite or least favorite Pokémon, compare rankings, and reveal how far the National Dex has been covered."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Can I share my Pokémon declaration?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Yes. After saving a declaration, Favmon can generate square, story, and banner trainer cards for Instagram, TikTok, X, and other social platforms."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Can I choose a least favorite Pokémon?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Yes. Favmon includes a favorite mode and a least-favorite mode so the community can track both loved Pokémon and divisive picks."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "Where does Favmon get Pokémon and ranking data?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Favmon uses PokéAPI for Pokémon names, types, sprites, and artwork. Community declaration counts come from this site's own Neon Postgres database."
+                }
+              }
+            ]
+          }
+        ]
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

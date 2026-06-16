@@ -1,13 +1,18 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   buildPokemonRows,
   decoratePokemon,
+  fetchPokemonList,
   getGeneration,
   mergePokemonStats,
   pokemonDataToRows,
 } from './pokemon';
 
 describe('pokemon data helpers', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   it('decorates fetched pokemon with id, sprite, generation, type, and zero votes by default', () => {
     const rows = buildPokemonRows([
       { name: 'bulbasaur', url: 'https://pokeapi.co/api/v2/pokemon/1/' },
@@ -19,14 +24,14 @@ describe('pokemon data helpers', () => {
         id: 1,
         name: 'Bulbasaur',
         generation: 'gen1',
-        sprite: expect.stringContaining('/sprites/pokemon/1.png'),
+        sprite: '/pokemon/sprites/1.png',
         votes: 0,
       }),
       expect.objectContaining({
         id: 25,
         name: 'Pikachu',
         generation: 'gen1',
-        artwork: expect.stringContaining('/official-artwork/25.png'),
+        artwork: '/pokemon/artwork/25.webp',
       }),
     ]);
   });
@@ -52,9 +57,8 @@ describe('pokemon data helpers', () => {
         slug: 'mimikyu-disguised',
         name: 'mimikyu-disguised',
         types: ['ghost', 'fairy'],
-        sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/778.png',
-        artwork:
-          'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/778.png',
+        sprite: '/pokemon/sprites/778.png',
+        artwork: '/pokemon/artwork/778.webp',
       },
     ]);
 
@@ -63,11 +67,29 @@ describe('pokemon data helpers', () => {
         id: 778,
         name: 'Mimikyu-Disguised',
         types: ['ghost', 'fairy'],
-        sprite: expect.stringContaining('/778.png'),
-        artwork: expect.stringContaining('/official-artwork/778.png'),
+        sprite: '/pokemon/sprites/778.png',
+        artwork: '/pokemon/artwork/778.webp',
         votes: 0,
       }),
     );
+  });
+
+  it('falls back to starter rows when local and PokeAPI data are unavailable', async () => {
+    const fetchMock = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const rows = await fetchPokemonList(2);
+
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toEqual(
+      expect.objectContaining({
+        id: 1,
+        name: 'Bulbasaur',
+        types: ['grass', 'poison'],
+      }),
+    );
+    expect(fetchMock).toHaveBeenCalledWith('/data/pokemon.json');
+    expect(fetchMock).toHaveBeenCalledWith('https://pokeapi.co/api/v2/pokemon?limit=2');
   });
 
   it('maps pokemon ids to generations and display metadata', () => {

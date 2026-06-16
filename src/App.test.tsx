@@ -9,32 +9,32 @@ const pokemonData = [
     slug: 'bulbasaur',
     name: 'bulbasaur',
     types: ['grass', 'poison'],
-    sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/1.png',
-    artwork: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/1.png',
+    sprite: '/pokemon/sprites/1.png',
+    artwork: '/pokemon/artwork/1.webp',
   },
   {
     id: 4,
     slug: 'charmander',
     name: 'charmander',
     types: ['fire'],
-    sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/4.png',
-    artwork: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/4.png',
+    sprite: '/pokemon/sprites/4.png',
+    artwork: '/pokemon/artwork/4.webp',
   },
   {
     id: 25,
     slug: 'pikachu',
     name: 'pikachu',
     types: ['electric'],
-    sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png',
-    artwork: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png',
+    sprite: '/pokemon/sprites/25.png',
+    artwork: '/pokemon/artwork/25.webp',
   },
   {
     id: 129,
     slug: 'magikarp',
     name: 'magikarp',
     types: ['water'],
-    sprite: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/129.png',
-    artwork: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/129.png',
+    sprite: '/pokemon/sprites/129.png',
+    artwork: '/pokemon/artwork/129.webp',
   },
 ];
 
@@ -97,6 +97,66 @@ describe('Favorite Pokemon clone', () => {
     expect(await screen.findByRole('heading', { name: /Who's More Loved/i })).toBeInTheDocument();
   });
 
+  it('keeps the home showcase unselected until the trainer chooses a Pokemon', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.startsWith('/api/data')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => backendData,
+          });
+        }
+        return Promise.resolve({
+          ok: true,
+          json: async () => pokemonData,
+        });
+      }),
+    );
+
+    const user = userEvent.setup();
+    render(<App />);
+
+    expect(await screen.findByRole('heading', { name: /Every Pokémon is/i })).toBeInTheDocument();
+    expect(screen.getByText('#???')).toBeInTheDocument();
+    expect(screen.getAllByText('???').length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: 'Declare favourite' })).toBeDisabled();
+    expect(screen.queryByLabelText('Charizard')).not.toBeInTheDocument();
+
+    await user.type(screen.getByLabelText('Favourite Pokémon'), 'pika');
+    await user.click(await screen.findByRole('button', { name: /Pikachu/i }));
+
+    expect(screen.getByRole('button', { name: /Pikachu.*#025/i })).toBeInTheDocument();
+    expect(screen.getByLabelText('Pikachu')).toBeInTheDocument();
+  });
+
+  it('renders localized copy from a zh-cn URL prefix', async () => {
+    window.history.replaceState({}, '', '/zh-cn/pokedex');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.startsWith('/api/data')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => backendData,
+          });
+        }
+        return Promise.resolve({
+          ok: true,
+          json: async () => pokemonData,
+        });
+      }),
+    );
+
+    render(<App />);
+
+    expect(await screen.findByRole('heading', { name: /大家选出的最喜欢宝可梦/i })).toBeInTheDocument();
+    expect(screen.getByLabelText('搜索图鉴')).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: '人气优先' })).toBeInTheDocument();
+  });
+
   it('shows the source-style success panel after a declaration is saved', async () => {
     vi.stubGlobal(
       'fetch',
@@ -146,7 +206,7 @@ describe('Favorite Pokemon clone', () => {
     expect(await screen.findByRole('heading', { name: 'Declaration saved. That Pokémon has someone now.' })).toBeInTheDocument();
     expect(screen.getByText('There are already 13 fans of pikachu like you!')).toBeInTheDocument();
     expect(screen.getByText('7 / 1025 Pokémon revealed - the journey continues...')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: '🎉 Download your Pokémon card!' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Download your Pokémon card!' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Official Art' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Pixel Art' })).toBeInTheDocument();
     expect(screen.getByLabelText('Shiny')).toBeInTheDocument();

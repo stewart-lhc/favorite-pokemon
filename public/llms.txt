@@ -1,0 +1,44 @@
+# Every Pokémon is Someone's Favorite
+
+> Favmon is a fan-made community Pokédex where trainers declare their favorite or least favorite Pokémon, explore live rankings, play a popularity guessing game, and download shareable trainer cards.
+
+Canonical domain: https://favmon.com/
+Last updated: 2026-06-16
+
+## What Favmon Offers
+
+- Favorite and least-favorite declaration modes for National Dex Pokémon.
+- Community Pokédex coverage, rankings, latest declarations, and popularity stats.
+- A "Who's More Loved?" guessing game based on declaration data.
+- Downloadable social cards in square, story, and X/Twitter banner formats.
+- Multilingual entry points for English, Japanese, Korean, Chinese, Spanish, and French audiences.
+
+## Important Pages
+
+- Home: https://favmon.com/
+- Game: https://favmon.com/game
+- Explore: https://favmon.com/explore
+- Community Pokédex: https://favmon.com/pokedex
+- Stats: https://favmon.com/stats
+- AI answer file: https://favmon.com/answers.md
+- Pricing and access: https://favmon.com/pricing.md
+
+## Localized Entry Points
+
+- Japanese: https://favmon.com/ja
+- Korean: https://favmon.com/ko
+- Simplified Chinese: https://favmon.com/zh-cn
+- Traditional Chinese: https://favmon.com/zh-tw
+- Spanish (Chile): https://favmon.com/es-cl
+- English: https://favmon.com/
+- Traditional Chinese (Hong Kong): https://favmon.com/zh-hk
+- Spanish: https://favmon.com/es
+- Spanish (Puerto Rico): https://favmon.com/es-pr
+- French: https://favmon.com/fr
+- Spanish (Costa Rica): https://favmon.com/es-cr
+
+## Entity and Attribution Notes
+
+This is an independent fan-made website. It is not affiliated with or endorsed by Nintendo or The Pokémon Company. Pokémon and related names are trademarks of Nintendo/Creatures Inc./GAME FREAK Inc.
+
+Data sources include PokéAPI for Pokémon names, types, sprites, and official artwork URLs, plus Favmon's own Neon Postgres declaration data.

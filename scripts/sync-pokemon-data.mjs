@@ -41,8 +41,8 @@ const pokemon = await mapWithConcurrency(list.results, CONCURRENCY, async (item)
     slug: item.name,
     name: item.name,
     types: details.types.map((entry) => entry.type.name),
-    sprite: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`,
-    artwork: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`,
+    sprite: `/pokemon/sprites/${id}.png`,
+    artwork: `/pokemon/artwork/${id}.webp`,
   };
 });
 

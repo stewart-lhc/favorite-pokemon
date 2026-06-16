@@ -1,8 +1,115 @@
 {
+  "redirects": [
+    {
+      "source": "/",
+      "has": [{ "type": "host", "value": "www.favmon.com" }],
+      "destination": "https://favmon.com/",
+      "statusCode": 301
+    },
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "www.favmon.com" }],
+      "destination": "https://favmon.com/:path*",
+      "statusCode": 301
+    },
+    {
+      "source": "/",
+      "has": [{ "type": "host", "value": "favipokemon.vercel.app" }],
+      "destination": "https://favmon.com/",
+      "statusCode": 301
+    },
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "favipokemon.vercel.app" }],
+      "destination": "https://favmon.com/:path*",
+      "statusCode": 301
+    },
+    {
+      "source": "/en",
+      "destination": "/",
+      "statusCode": 301
+    },
+    {
+      "source": "/en/",
+      "destination": "/",
+      "statusCode": 301
+    },
+    {
+      "source": "/en/:route(game|explore|pokedex|stats)",
+      "destination": "/:route",
+      "statusCode": 301
+    },
+    {
+      "source": "/en/:route(game|explore|pokedex|stats)/",
+      "destination": "/:route",
+      "statusCode": 301
+    },
+    {
+      "source": "/:route(game|explore|pokedex|stats)/",
+      "destination": "/:route",
+      "statusCode": 301
+    },
+    {
+      "source": "/:locale(ja|ko|zh-cn|zh-tw|zh-hk|es|es-cl|es-pr|es-cr|fr)/",
+      "destination": "/:locale",
+      "statusCode": 301
+    },
+    {
+      "source": "/:locale(ja|ko|zh-cn|zh-tw|zh-hk|es|es-cl|es-pr|es-cr|fr)/:route(game|explore|pokedex|stats)/",
+      "destination": "/:locale/:route",
+      "statusCode": 301
+    }
+  ],
+  "headers": [
+    {
+      "source": "/assets/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+    },
+    {
+      "source": "/pokemon/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+    },
+    {
+      "source": "/data/pokemon.json",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800" }]
+    },
+    {
+      "source": "/brand/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400, stale-while-revalidate=604800" }]
+    },
+    {
+      "source": "/robots.txt",
+      "headers": [{ "key": "Content-Type", "value": "text/plain; charset=utf-8" }]
+    },
+    {
+      "source": "/sitemap.xml",
+      "headers": [{ "key": "Content-Type", "value": "application/xml; charset=utf-8" }]
+    },
+    {
+      "source": "/llms.txt",
+      "headers": [{ "key": "Content-Type", "value": "text/plain; charset=utf-8" }]
+    },
+    {
+      "source": "/answers.md",
+      "headers": [{ "key": "Content-Type", "value": "text/markdown; charset=utf-8" }]
+    },
+    {
+      "source": "/pricing.md",
+      "headers": [{ "key": "Content-Type", "value": "text/markdown; charset=utf-8" }]
+    }
+  ],
   "rewrites": [
     {
-      "source": "/((?!api/).*)",
-      "destination": "/index.html"
+      "source": "/:locale(ja|ko|zh-cn|zh-tw|zh-hk|es|es-cl|es-pr|es-cr|fr)/:route(game|explore|pokedex|stats)",
+      "destination": "/_seo/:locale/:route.html"
+    },
+    {
+      "source": "/:route(game|explore|pokedex|stats)",
+      "destination": "/_seo/:route.html"
+    },
+    {
+      "source": "/:locale(ja|ko|zh-cn|zh-tw|zh-hk|es|es-cl|es-pr|es-cr|fr)",
+      "destination": "/_seo/:locale/index.html"
     }
   ]
 }

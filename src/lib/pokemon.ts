@@ -40,19 +40,69 @@ const knownTypes = new Map<number, PokemonType[]>([
   [151, ['psychic']],
 ]);
 
+const fallbackPokemonData: PokemonDataItem[] = [
+  {
+    id: 1,
+    slug: 'bulbasaur',
+    name: 'bulbasaur',
+    types: ['grass', 'poison'],
+    sprite: '/pokemon/sprites/1.png',
+    artwork: '/pokemon/artwork/1.webp',
+  },
+  {
+    id: 4,
+    slug: 'charmander',
+    name: 'charmander',
+    types: ['fire'],
+    sprite: '/pokemon/sprites/4.png',
+    artwork: '/pokemon/artwork/4.webp',
+  },
+  {
+    id: 6,
+    slug: 'charizard',
+    name: 'charizard',
+    types: ['fire', 'flying'],
+    sprite: '/pokemon/sprites/6.png',
+    artwork: '/pokemon/artwork/6.webp',
+  },
+  {
+    id: 7,
+    slug: 'squirtle',
+    name: 'squirtle',
+    types: ['water'],
+    sprite: '/pokemon/sprites/7.png',
+    artwork: '/pokemon/artwork/7.webp',
+  },
+  {
+    id: 25,
+    slug: 'pikachu',
+    name: 'pikachu',
+    types: ['electric'],
+    sprite: '/pokemon/sprites/25.png',
+    artwork: '/pokemon/artwork/25.webp',
+  },
+  {
+    id: 150,
+    slug: 'mewtwo',
+    name: 'mewtwo',
+    types: ['psychic'],
+    sprite: '/pokemon/sprites/150.png',
+    artwork: '/pokemon/artwork/150.webp',
+  },
+];
+
 export async function fetchPokemonList(limit = MAX_POKEMON): Promise<PokemonRow[]> {
-  const localResponse = await fetch('/data/pokemon.json');
-  if (localResponse.ok) {
-    const payload = (await localResponse.json()) as PokemonDataItem[];
-    return pokemonDataToRows(payload.slice(0, limit));
+  const localRows = await fetchLocalPokemonRows(limit);
+  if (localRows.length > 0) {
+    return localRows;
   }
 
-  const response = await fetch(`https://pokeapi.co/api/v2/pokemon?limit=${limit}`);
-  if (!response.ok) {
-    throw new Error(`PokeAPI request failed: ${response.status}`);
+  const pokeApiRows = await fetchPokeApiRows(limit);
+  if (pokeApiRows.length > 0) {
+    return pokeApiRows;
   }
-  const payload = (await response.json()) as { results: PokeApiListItem[] };
-  return buildPokemonRows(payload.results.slice(0, limit));
+
+  return pokemonDataToRows(fallbackPokemonData.slice(0, limit));
 }
 
 export function pokemonDataToRows(items: PokemonDataItem[]): PokemonRow[] {
@@ -64,8 +114,8 @@ export function pokemonDataToRows(items: PokemonDataItem[]): PokemonRow[] {
       name: formatPokemonName(item.name),
       slug: item.slug,
       number: `#${String(item.id).padStart(3, '0')}`,
-      sprite: item.sprite,
-      artwork: item.artwork,
+      sprite: pokemonSpriteUrl(item.id),
+      artwork: pokemonOfficialArtworkUrl(item.id),
       generation,
       generationLabel,
       types: item.types,
@@ -81,7 +131,7 @@ export function buildPokemonRows(items: PokeApiListItem[], mode: Mode = 'favouri
   });
 }
 
-export function decoratePokemon(id: number, rawName: string, mode: Mode): PokemonRow {
+export function decoratePokemon(id: number, rawName: string, _mode: Mode): PokemonRow {
   const generation = getGeneration(id);
   const generationLabel = generations.find((item) => item.key === generation)?.label ?? 'Gen IX';
   return {
@@ -89,8 +139,8 @@ export function decoratePokemon(id: number, rawName: string, mode: Mode): Pokemo
     name: formatPokemonName(rawName),
     slug: rawName,
     number: `#${String(id).padStart(3, '0')}`,
-    sprite: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`,
-    artwork: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`,
+    sprite: pokemonSpriteUrl(id),
+    artwork: pokemonOfficialArtworkUrl(id),
     generation,
     generationLabel,
     types: getTypes(id),
@@ -126,7 +176,19 @@ export function formatPokemonName(rawName: string): string {
 }
 
 export function typeIconUrl(type: PokemonType): string {
-  return `https://raw.githubusercontent.com/duiker101/pokemon-type-svg-icons/master/icons/${type}.svg`;
+  return `/pokemon/types/${type}.svg`;
+}
+
+export function pokemonSpriteUrl(id: number): string {
+  return `/pokemon/sprites/${id}.png`;
+}
+
+export function pokemonOfficialArtworkUrl(id: number): string {
+  return `/pokemon/artwork/${id}.webp`;
+}
+
+export function remotePokemonOfficialArtworkUrl(id: number): string {
+  return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`;
 }
 
 function idFromUrl(url: string): number | null {
@@ -138,4 +200,27 @@ function getTypes(id: number): PokemonType[] {
   const known = knownTypes.get(id);
   if (known) return known;
   return ['normal'];
+}
+
+async function fetchLocalPokemonRows(limit: number): Promise<PokemonRow[]> {
+  try {
+    const response = await fetch('/data/pokemon.json');
+    if (!response.ok) return [];
+    const payload = (await response.json()) as unknown;
+    if (!Array.isArray(payload)) return [];
+    return pokemonDataToRows((payload as PokemonDataItem[]).slice(0, limit));
+  } catch {
+    return [];
+  }
+}
+
+async function fetchPokeApiRows(limit: number): Promise<PokemonRow[]> {
+  try {
+    const response = await fetch(`https://pokeapi.co/api/v2/pokemon?limit=${limit}`);
+    if (!response.ok) return [];
+    const payload = (await response.json()) as { results?: PokeApiListItem[] };
+    return buildPokemonRows((payload.results ?? []).slice(0, limit));
+  } catch {
+    return [];
+  }
 }

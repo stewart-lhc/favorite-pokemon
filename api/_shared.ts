@@ -9,9 +9,15 @@ type ResponseLike = {
 export type Mode = 'favourite' | 'not_favourite';
 
 export const sql = neon(requiredEnv('DATABASE_URL'));
+export const publicReadCache = 'public, s-maxage=30, stale-while-revalidate=300';
 
-export function sendJson(response: ResponseLike, status: number, body: unknown) {
-  response.setHeader('Cache-Control', 'no-store');
+export function sendJson(
+  response: ResponseLike,
+  status: number,
+  body: unknown,
+  cacheControl = 'no-store',
+) {
+  response.setHeader('Cache-Control', cacheControl);
   response.status(status).json(body);
 }
 

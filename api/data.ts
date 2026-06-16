@@ -1,4 +1,4 @@
-import { normalizeMode, sendJson, sql, toDeclaration } from './_shared.js';
+import { normalizeMode, publicReadCache, sendJson, sql, toDeclaration } from './_shared.js';
 
 type RequestLike = {
   method?: string;
@@ -35,12 +35,17 @@ export default async function handler(request: RequestLike, response: ResponseLi
     limit 20
   `;
 
-  return sendJson(response, 200, {
-    stats: statsRows.map((row) => ({
-      pokemonId: Number(row.pokemon_id),
-      pokemonName: String(row.pokemon_name),
-      fanCount: Number(row.fan_count),
-    })),
-    latest: latestRows.map(toDeclaration),
-  });
+  return sendJson(
+    response,
+    200,
+    {
+      stats: statsRows.map((row) => ({
+        pokemonId: Number(row.pokemon_id),
+        pokemonName: String(row.pokemon_name),
+        fanCount: Number(row.fan_count),
+      })),
+      latest: latestRows.map(toDeclaration),
+    },
+    publicReadCache,
+  );
 }

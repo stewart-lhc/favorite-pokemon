@@ -39,6 +39,23 @@ describe('backend API client', () => {
     expect(fetchMock).toHaveBeenCalledWith('/api/data?mode=favourite');
   });
 
+  it('uses empty data when the local dev server returns a non-json API response', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: new Headers({ 'content-type': 'text/javascript' }),
+      json: async () => {
+        throw new SyntaxError('Unexpected token import');
+      },
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(loadBackendData('favourite')).resolves.toEqual({
+      stats: [],
+      latest: [],
+    });
+    expect(fetchMock).toHaveBeenCalledWith('/api/data?mode=favourite');
+  });
+
   it('posts declarations to our API before marking them local', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,

@@ -5,12 +5,16 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "build": "tsc -b && vite build",
+    "brand:assets": "node scripts/generate-brand-assets.mjs",
+    "seo:assets": "node scripts/generate-seo-assets.mjs",
+    "seo:routes": "node scripts/generate-seo-routes.mjs",
+    "build": "npm run seo:assets && tsc -b && vite build && npm run seo:routes",
     "preview": "vite preview --host 0.0.0.0",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint .",
     "check": "npm run test && npm run build",
+    "pokemon:assets": "node scripts/cache-pokemon-assets.mjs",
     "sync:pokemon": "node scripts/sync-pokemon-data.mjs"
   },
   "dependencies": {
@@ -35,6 +39,8 @@
     "globals": "^16.5.0",
     "jsdom": "^27.3.0",
     "playwright": "^1.57.0",
+    "sharp": "^0.35.1",
+    "typescript-eslint": "^8.61.1",
     "vite": "^8.0.16",
     "vitest": "^4.0.15"
   }
