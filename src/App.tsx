@@ -2390,6 +2390,9 @@ export default function App() {
   const [backendLoading, setBackendLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [backendError, setBackendError] = useState('');
+  const [usesMobileNav, setUsesMobileNav] = useState(() =>
+    typeof window.matchMedia === 'function' ? window.matchMedia('(max-width: 1060px)').matches : false,
+  );
   const t = useMemo(() => copyFor(language, mode), [language, mode]);
   const loading = pokemonLoading;
 
@@ -2455,6 +2458,25 @@ export default function App() {
     window.addEventListener('popstate', onPop);
     return () => {
       window.removeEventListener('popstate', onPop);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return undefined;
+    const mediaQuery = window.matchMedia('(max-width: 1060px)');
+    const syncMobileNav = () => setUsesMobileNav(mediaQuery.matches);
+
+    syncMobileNav();
+    if (typeof mediaQuery.addEventListener === 'function') {
+      mediaQuery.addEventListener('change', syncMobileNav);
+      return () => {
+        mediaQuery.removeEventListener('change', syncMobileNav);
+      };
+    }
+
+    mediaQuery.addListener(syncMobileNav);
+    return () => {
+      mediaQuery.removeListener(syncMobileNav);
     };
   }, []);
 
@@ -2537,6 +2559,28 @@ export default function App() {
     setMode((current) => (current === 'favourite' ? 'not_favourite' : 'favourite'));
   }
 
+  function renderNavigationLinks() {
+    return (
+      <>
+        <NavLink route="/" activeRoute={route} language={language} onNavigate={navigate}>
+          {t.declare}
+        </NavLink>
+        <NavLink route="/game" activeRoute={route} language={language} onNavigate={navigate}>
+          {t.game}
+        </NavLink>
+        <NavLink route="/explore" activeRoute={route} language={language} onNavigate={navigate}>
+          {t.explore}
+        </NavLink>
+        <NavLink route="/pokedex" activeRoute={route} language={language} onNavigate={navigate}>
+          {t.pokedex}
+        </NavLink>
+        <NavLink route="/stats" activeRoute={route} language={language} onNavigate={navigate}>
+          {t.stats}
+        </NavLink>
+      </>
+    );
+  }
+
   return (
     <>
       <header className="site-header">
@@ -2546,23 +2590,7 @@ export default function App() {
             <span>{t.appTitle}</span>
           </a>
           <div className="navbar-right">
-            <div className="nav-links">
-              <NavLink route="/" activeRoute={route} language={language} onNavigate={navigate}>
-                {t.declare}
-              </NavLink>
-              <NavLink route="/game" activeRoute={route} language={language} onNavigate={navigate}>
-                {t.game}
-              </NavLink>
-              <NavLink route="/explore" activeRoute={route} language={language} onNavigate={navigate}>
-                {t.explore}
-              </NavLink>
-              <NavLink route="/pokedex" activeRoute={route} language={language} onNavigate={navigate}>
-                {t.pokedex}
-              </NavLink>
-              <NavLink route="/stats" activeRoute={route} language={language} onNavigate={navigate}>
-                {t.stats}
-              </NavLink>
-            </div>
+            {!usesMobileNav && <div className="nav-links nav-links--desktop">{renderNavigationLinks()}</div>}
             <div className="navbar-actions">
               <button
                 type="button"
@@ -2608,6 +2636,12 @@ export default function App() {
           </div>
         </nav>
       </header>
+
+      {usesMobileNav && (
+        <nav className="nav-links mobile-nav-dock" aria-label="Main navigation">
+          {renderNavigationLinks()}
+        </nav>
+      )}
 
       <main className="app-shell">
         {loadError && <p className="message warning">{t.pokemonLoadWarning} {loadError}</p>}

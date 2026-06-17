@@ -270,6 +270,10 @@ h1 {
   box-shadow: 0 4px 0 rgba(17, 20, 45, 0.1);
 }
 
+.mobile-nav-dock {
+  display: none;
+}
+
 [data-mode="not_favourite"] .nav-links {
   border-color: rgba(83, 216, 251, 0.82);
   background: rgba(15, 8, 32, 0.72);
@@ -4173,6 +4177,14 @@ h1 {
     box-shadow: 0 8px 0 rgba(17, 20, 45, 0.14), 0 18px 42px rgba(17, 20, 45, 0.22);
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
+  }
+
+  .nav-links--desktop {
+    display: none;
+  }
+
+  .mobile-nav-dock {
+    display: grid;
   }
 
   [data-mode="not_favourite"] .nav-links {

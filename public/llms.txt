@@ -3,7 +3,7 @@
 > Favmon is a fan-made community Pokédex where trainers declare their favorite or least favorite Pokémon, explore live rankings, play a popularity guessing game, and download shareable trainer cards.
 
 Canonical domain: https://favmon.com/
-Last updated: 2026-06-16
+Last updated: 2026-06-17
 
 ## What Favmon Offers
 
