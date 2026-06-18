@@ -157,6 +157,38 @@ describe('Favorite Pokemon clone', () => {
     expect(screen.getByRole('option', { name: '人气优先' })).toBeInTheDocument();
   });
 
+  it('closes the language menu after selecting a locale', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.startsWith('/api/data')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => backendData,
+          });
+        }
+        return Promise.resolve({
+          ok: true,
+          json: async () => pokemonData,
+        });
+      }),
+    );
+
+    const user = userEvent.setup();
+    render(<App />);
+
+    expect(await screen.findByRole('heading', { name: /Every Pokémon is/i })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Language' }));
+    expect(screen.getByRole('listbox', { name: 'Language' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('option', { name: /Français/i }));
+
+    expect(window.location.pathname).toBe('/fr');
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Langue' })).toHaveTextContent('FR');
+  });
+
   it('shows the source-style success panel after a declaration is saved', async () => {
     vi.stubGlobal(
       'fetch',

@@ -2393,6 +2393,8 @@ export default function App() {
   const [usesMobileNav, setUsesMobileNav] = useState(() =>
     typeof window.matchMedia === 'function' ? window.matchMedia('(max-width: 1060px)').matches : false,
   );
+  const [languageMenuOpen, setLanguageMenuOpen] = useState(false);
+  const languageMenuRef = useRef<HTMLDivElement | null>(null);
   const t = useMemo(() => copyFor(language, mode), [language, mode]);
   const loading = pokemonLoading;
 
@@ -2491,6 +2493,30 @@ export default function App() {
   }, [language]);
 
   useEffect(() => {
+    if (!languageMenuOpen) return;
+
+    function closeOnOutsidePointer(event: PointerEvent) {
+      if (languageMenuRef.current && !languageMenuRef.current.contains(event.target as Node)) {
+        setLanguageMenuOpen(false);
+      }
+    }
+
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setLanguageMenuOpen(false);
+      }
+    }
+
+    document.addEventListener('pointerdown', closeOnOutsidePointer);
+    document.addEventListener('keydown', closeOnEscape);
+
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsidePointer);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [languageMenuOpen]);
+
+  useEffect(() => {
     const existing = document.getElementById('locale-font-stylesheet') as HTMLLinkElement | null;
     const href = fontStylesheetsByLanguage[language];
     if (!href) {
@@ -2553,6 +2579,7 @@ export default function App() {
     const nextPath = localizedPath(route, nextLanguage);
     window.history.pushState({}, '', nextPath);
     setLocationState({ route, language: nextLanguage });
+    setLanguageMenuOpen(false);
   }
 
   function toggleMode() {
@@ -2611,12 +2638,19 @@ export default function App() {
                 <Coffee size={16} />
                 <span className="kofi-text">Ko-fi</span>
               </a>
-              <div className="language-select">
-                <button type="button" className="language-trigger" aria-label={t.language}>
+              <div className={`language-select${languageMenuOpen ? ' is-open' : ''}`} ref={languageMenuRef}>
+                <button
+                  type="button"
+                  className="language-trigger"
+                  aria-label={t.language}
+                  aria-expanded={languageMenuOpen}
+                  aria-haspopup="listbox"
+                  onClick={() => setLanguageMenuOpen((open) => !open)}
+                >
                   <span>{activeLocaleOption.shortLabel}</span>
                   <ChevronDown size={14} aria-hidden="true" />
                 </button>
-                <div className="language-menu-list" role="listbox" aria-label={t.language}>
+                <div className="language-menu-list" role="listbox" aria-label={t.language} hidden={!languageMenuOpen}>
                   {localeOptions.map((option) => (
                     <button
                       key={option.code}
@@ -2643,7 +2677,7 @@ export default function App() {
         </nav>
       )}
 
-      <main className="app-shell">
+      <main className={`app-shell${route === '/explore' ? ' app-shell--explore' : ''}`}>
         {loadError && <p className="message warning">{t.pokemonLoadWarning} {loadError}</p>}
         {backendError && <p className="message warning">{t.backendLoadWarning} {backendError}</p>}
         {route === '/' && (
@@ -2673,7 +2707,7 @@ export default function App() {
         )}
       </main>
 
-      {route !== '/game' && <Footer t={t} />}
+      {route !== '/game' && route !== '/explore' && <Footer t={t} />}
     </>
   );
 }
@@ -3136,7 +3170,7 @@ function ExplorePage({
 }) {
   return (
     <section className="page explore-page">
-      <div className="explore-page-heading">
+      <div className="explore-page-heading sr-only">
         <p className="eyebrow">{t.explore}</p>
         <h1>{t.exploreHeading}</h1>
       </div>
@@ -3445,6 +3479,13 @@ function StatsPage({
       .filter((row) => row.types.includes(type as PokemonType))
       .reduce((sum, row) => sum + row.votes, 0),
   }));
+  const statsNavItems = [
+    { id: 'stats-top-ten', label: t.topTen },
+    { id: 'stats-generation', label: t.byGeneration },
+    { id: 'stats-type', label: t.byType },
+    { id: 'stats-ranking', label: t.fullRanking },
+    { id: 'stats-latest', label: t.latest },
+  ];
 
   return (
     <section className="page stats-page">
@@ -3462,46 +3503,63 @@ function StatsPage({
       {loading && <StatsSkeleton t={t} />}
       {!loading && (
         <>
+          <nav className="stats-jump-nav" aria-label={t.statsHeading}>
+            {statsNavItems.map((item) => (
+              <a key={item.id} href={`#${item.id}`}>
+                {item.label}
+              </a>
+            ))}
+          </nav>
+
           <div className={`metrics-grid${dataPending ? ' is-pending' : ''}`} aria-busy={dataPending}>
             <article className="metric-card">
               <Heart size={20} aria-hidden="true" />
               <span>{t.declarations}</span>
               <strong>{totalVotes.toLocaleString(language)}</strong>
+              <img className="metric-card-art" src={officialArtworkUrl(25)} alt="" width={475} height={475} loading="lazy" decoding="async" />
             </article>
             <article className="metric-card">
               <Sparkles size={20} aria-hidden="true" />
               <span>{t.uniquePokemon}</span>
               <strong>{unique.toLocaleString(language)}</strong>
+              <img className="metric-card-art" src={officialArtworkUrl(151)} alt="" width={475} height={475} loading="lazy" decoding="async" />
             </article>
             <article className="metric-card">
               <Gamepad2 size={20} aria-hidden="true" />
               <span>{t.pokedexCovered}</span>
               <strong>{coverage.toFixed(1)}%</strong>
+              <img className="metric-card-art" src={officialArtworkUrl(133)} alt="" width={475} height={475} loading="lazy" decoding="async" />
             </article>
           </div>
 
-          <section className="stats-section">
+          <section className="stats-section stats-section--chart" id="stats-top-ten">
             <h2>{t.topTen}</h2>
             <BarChart rows={sorted.slice(0, 10).map((row) => ({ ...row, label: row.name }))} />
           </section>
 
-          <section className="stats-section">
-            <h2 onClick={() => setExpandedGeneration((value) => !value)}>
-              {t.byGeneration} <span>{expandedGeneration ? '▲' : '▼'}</span>
+          <section className="stats-section stats-section--chart" id="stats-generation">
+            <h2>
+              <button className="stats-section-toggle" type="button" onClick={() => setExpandedGeneration((value) => !value)} aria-expanded={expandedGeneration}>
+                <span>{t.byGeneration}</span>
+                <span aria-hidden="true">{expandedGeneration ? '▲' : '▼'}</span>
+              </button>
             </h2>
             {expandedGeneration && (
               <BarChart rows={generationRows.sort((a, b) => b.votes - a.votes)} />
             )}
           </section>
 
-          <section className="stats-section">
-            <h2 onClick={() => setExpandedType((value) => !value)}>
-              {t.byType} <span>{expandedType ? '▲' : '▼'}</span>
+          <section className="stats-section stats-section--chart" id="stats-type">
+            <h2>
+              <button className="stats-section-toggle" type="button" onClick={() => setExpandedType((value) => !value)} aria-expanded={expandedType}>
+                <span>{t.byType}</span>
+                <span aria-hidden="true">{expandedType ? '▲' : '▼'}</span>
+              </button>
             </h2>
             {expandedType && <BarChart rows={typeRows.sort((a, b) => b.votes - a.votes).slice(0, 12)} />}
           </section>
 
-          <section className="stats-section">
+          <section className="stats-section stats-section--ranking" id="stats-ranking">
             <h2>{t.fullRanking}</h2>
             <div className="table-wrap">
               <table>
@@ -3530,7 +3588,7 @@ function StatsPage({
             </div>
           </section>
 
-          <section className="stats-section">
+          <section className="stats-section stats-section--latest" id="stats-latest">
             <h2>{t.latest}</h2>
             <div className="latest-grid">
               {declarations.slice(0, 10).map((declaration) => (
