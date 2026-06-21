@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createBackendDeclaration, loadBackendData, loadPokemonDeclarations } from './backend';
+import { createBackendDeclaration, loadBackendData, loadDeclarationDetail, loadPokemonDeclarations } from './backend';
 
 describe('backend API client', () => {
   beforeEach(() => {
@@ -104,5 +104,40 @@ describe('backend API client', () => {
 
     await expect(loadPokemonDeclarations(778, 'not_favourite')).resolves.toEqual([]);
     expect(fetchMock).toHaveBeenCalledWith('/api/declarations?mode=not_favourite&pokemonId=778');
+  });
+
+  it('loads a shareable declaration detail by id', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        declaration: {
+          id: 'declaration-1',
+          trainerName: 'Mixel',
+          pokemonId: 25,
+          pokemonName: 'Pikachu',
+          reason: 'Real declaration from the database',
+          mode: 'favourite',
+          createdAt: '2026-06-13T10:00:00.000Z',
+        },
+        fanCount: 7,
+        revealedCount: 42,
+        rank: 3,
+        totalDeclarations: 120,
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(loadDeclarationDetail('declaration-1')).resolves.toEqual({
+      declaration: expect.objectContaining({
+        id: 'declaration-1',
+        trainerName: 'Mixel',
+        pokemonId: 25,
+      }),
+      fanCount: 7,
+      revealedCount: 42,
+      rank: 3,
+      totalDeclarations: 120,
+    });
+    expect(fetchMock).toHaveBeenCalledWith('/api/declarations?id=declaration-1');
   });
 });

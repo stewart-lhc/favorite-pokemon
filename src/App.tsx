@@ -1,15 +1,22 @@
 import {
   Ban,
+  Check,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
   Coffee,
+  Copy,
   Gamepad2,
   Heart,
   Download,
+  Link2,
+  Mail,
+  MessageCircle,
   Search,
+  Send,
+  Share2,
   Sparkles,
   Trophy,
   X,
@@ -30,6 +37,7 @@ import {
 import {
   createBackendDeclaration,
   loadBackendData,
+  loadDeclarationDetail,
   loadPokemonDeclarations,
 } from './lib/backend';
 import {
@@ -40,6 +48,7 @@ import {
 } from './lib/storage';
 import type {
   Declaration,
+  DeclarationDetail,
   LocalDeclarationSummary,
   GenerationKey,
   Mode,
@@ -64,6 +73,8 @@ const localeOptions = [
 
 type Language = typeof localeOptions[number]['code'];
 type Route = '/' | '/game' | '/explore' | '/pokedex' | '/stats';
+type AppRoute = Route | '/declaration';
+type AppLocation = { route: AppRoute; language: Language; declarationId?: string };
 type SortKey = 'number' | 'name' | 'fans';
 type StatusFilter = 'all' | 'revealed' | 'hidden';
 
@@ -423,6 +434,18 @@ const englishTranslations = {
   cardSquare: 'Square (Instagram)',
   cardVertical: 'Story (TikTok)',
   cardHorizontal: 'Banner (X/Twitter)',
+  shareTerminalTitle: 'Share your declaration',
+  shareTerminalLead: 'Send the finished card, post the Favmon link, or copy a ready-made caption.',
+  shareNativeCard: 'Share card',
+  shareCopyLink: 'Copy link',
+  shareCopyText: 'Copy caption',
+  shareCopied: 'Copied!',
+  shareOpened: 'Share sheet opened.',
+  shareFallbackCopied: 'Sharing is not available here. Link copied.',
+  shareNetworkGroup: 'Share to social platforms',
+  shareFavouriteText: 'I declared {pokemon} as my favourite Pokémon on Favmon. Every Pokémon is someone\'s favourite.',
+  shareLeastText: 'I declared {pokemon} as my least favourite Pokémon on Favmon. The community stats are getting spicy.',
+  shareTitleText: '{trainer} chose {pokemon} on Favmon',
   sortNumber: 'Number',
   sortName: 'Name',
   sortFans: 'Most fans',
@@ -566,6 +589,18 @@ const spanishTranslations: TranslationMessages = {
   cardSquare: 'Cuadrada (Instagram)',
   cardVertical: 'Historia (TikTok)',
   cardHorizontal: 'Banner (X/Twitter)',
+  shareTerminalTitle: 'Comparte tu declaración',
+  shareTerminalLead: 'Envía la carta final, publica el enlace de Favmon o copia un texto listo.',
+  shareNativeCard: 'Compartir carta',
+  shareCopyLink: 'Copiar enlace',
+  shareCopyText: 'Copiar texto',
+  shareCopied: '¡Copiado!',
+  shareOpened: 'Panel de compartir abierto.',
+  shareFallbackCopied: 'Compartir no está disponible aquí. Enlace copiado.',
+  shareNetworkGroup: 'Compartir en plataformas sociales',
+  shareFavouriteText: 'Declaré a {pokemon} como mi Pokémon favorito en Favmon. Cada Pokémon es el favorito de alguien.',
+  shareLeastText: 'Declaré a {pokemon} como mi Pokémon menos favorito en Favmon. Las estadísticas de la comunidad se ponen intensas.',
+  shareTitleText: '{trainer} eligió a {pokemon} en Favmon',
   sortNumber: 'Número',
   sortName: 'Nombre',
   sortFans: 'Más fans',
@@ -707,6 +742,18 @@ const japaneseTranslations: TranslationMessages = {
   cardSquare: '正方形（Instagram）',
   cardVertical: 'ストーリー（TikTok）',
   cardHorizontal: 'バナー（X/Twitter）',
+  shareTerminalTitle: '宣言をシェア',
+  shareTerminalLead: '完成したカードを送ったり、Favmonリンクや投稿文をコピーできます。',
+  shareNativeCard: 'カードを共有',
+  shareCopyLink: 'リンクをコピー',
+  shareCopyText: '投稿文をコピー',
+  shareCopied: 'コピーしました！',
+  shareOpened: '共有シートを開きました。',
+  shareFallbackCopied: 'この環境では共有できないため、リンクをコピーしました。',
+  shareNetworkGroup: 'ソーシャルで共有',
+  shareFavouriteText: 'Favmonで{pokemon}をお気に入りポケモンとして宣言しました。どのポケモンも誰かの最愛です。',
+  shareLeastText: 'Favmonで{pokemon}をいちばん苦手なポケモンとして宣言しました。コミュニティ統計がさらに動きます。',
+  shareTitleText: '{trainer}がFavmonで{pokemon}を選びました',
   sortNumber: '番号',
   sortName: '名前',
   sortFans: 'ファンが多い順',
@@ -848,6 +895,18 @@ const koreanTranslations: TranslationMessages = {
   cardSquare: '정사각형(Instagram)',
   cardVertical: '스토리(TikTok)',
   cardHorizontal: '배너(X/Twitter)',
+  shareTerminalTitle: '선언 공유하기',
+  shareTerminalLead: '완성된 카드를 보내고 Favmon 링크나 준비된 문구를 복사하세요.',
+  shareNativeCard: '카드 공유',
+  shareCopyLink: '링크 복사',
+  shareCopyText: '문구 복사',
+  shareCopied: '복사 완료!',
+  shareOpened: '공유 시트를 열었습니다.',
+  shareFallbackCopied: '이 환경에서는 공유할 수 없어 링크를 복사했습니다.',
+  shareNetworkGroup: '소셜 플랫폼에 공유',
+  shareFavouriteText: 'Favmon에서 {pokemon}을(를) 최애 포켓몬으로 선언했습니다. 모든 포켓몬은 누군가의 최애입니다.',
+  shareLeastText: 'Favmon에서 {pokemon}을(를) 덜 좋아하는 포켓몬으로 선언했습니다. 커뮤니티 통계가 더 흥미로워집니다.',
+  shareTitleText: '{trainer}님이 Favmon에서 {pokemon}을(를) 선택했습니다',
   sortNumber: '번호',
   sortName: '이름',
   sortFans: '팬 많은 순',
@@ -989,6 +1048,18 @@ const traditionalChineseTranslations: TranslationMessages = {
   cardSquare: '正方形（Instagram）',
   cardVertical: '限時動態（TikTok）',
   cardHorizontal: '橫幅（X/Twitter）',
+  shareTerminalTitle: '分享你的宣言',
+  shareTerminalLead: '送出完成的卡片、發布 Favmon 連結，或複製已寫好的分享文案。',
+  shareNativeCard: '分享卡片',
+  shareCopyLink: '複製連結',
+  shareCopyText: '複製文案',
+  shareCopied: '已複製！',
+  shareOpened: '已開啟分享面板。',
+  shareFallbackCopied: '這個環境無法直接分享，已複製連結。',
+  shareNetworkGroup: '分享到社群平台',
+  shareFavouriteText: '我在 Favmon 宣言 {pokemon} 是我最喜歡的寶可夢。每隻寶可夢都是某個人的最愛。',
+  shareLeastText: '我在 Favmon 宣言 {pokemon} 是我最不喜歡的寶可夢。社群統計越來越有看頭了。',
+  shareTitleText: '{trainer} 在 Favmon 選擇了 {pokemon}',
   sortNumber: '編號',
   sortName: '名稱',
   sortFans: '最多粉絲',
@@ -1130,6 +1201,18 @@ const simplifiedChineseTranslations: TranslationMessages = {
   cardSquare: '方图（Instagram）',
   cardVertical: '竖版故事（TikTok）',
   cardHorizontal: '横幅（X/Twitter）',
+  shareTerminalTitle: '分享你的宣言',
+  shareTerminalLead: '发送已经生成好的卡片，发布 Favmon 链接，或复制一段现成文案。',
+  shareNativeCard: '分享卡片',
+  shareCopyLink: '复制链接',
+  shareCopyText: '复制文案',
+  shareCopied: '已复制！',
+  shareOpened: '已打开分享面板。',
+  shareFallbackCopied: '当前环境不能直接分享，已复制链接。',
+  shareNetworkGroup: '分享到社交平台',
+  shareFavouriteText: '我在 Favmon 宣言 {pokemon} 是我最喜欢的宝可梦。每只宝可梦都是某个人的最爱。',
+  shareLeastText: '我在 Favmon 宣言 {pokemon} 是我最不喜欢的宝可梦。社区统计越来越有看头了。',
+  shareTitleText: '{trainer} 在 Favmon 选择了 {pokemon}',
   sortNumber: '编号',
   sortName: '名字',
   sortFans: '人气优先',
@@ -1271,6 +1354,18 @@ const frenchTranslations: TranslationMessages = {
   cardSquare: 'Carré (Instagram)',
   cardVertical: 'Story (TikTok)',
   cardHorizontal: 'Bannière (X/Twitter)',
+  shareTerminalTitle: 'Partager votre déclaration',
+  shareTerminalLead: 'Envoyez la carte finale, publiez le lien Favmon ou copiez une légende prête.',
+  shareNativeCard: 'Partager la carte',
+  shareCopyLink: 'Copier le lien',
+  shareCopyText: 'Copier le texte',
+  shareCopied: 'Copié !',
+  shareOpened: 'Feuille de partage ouverte.',
+  shareFallbackCopied: 'Le partage n’est pas disponible ici. Lien copié.',
+  shareNetworkGroup: 'Partager sur les plateformes sociales',
+  shareFavouriteText: 'J’ai déclaré {pokemon} comme mon Pokémon favori sur Favmon. Chaque Pokémon est le favori de quelqu’un.',
+  shareLeastText: 'J’ai déclaré {pokemon} comme mon Pokémon le moins favori sur Favmon. Les stats de la communauté deviennent piquantes.',
+  shareTitleText: '{trainer} a choisi {pokemon} sur Favmon',
   sortNumber: 'Numéro',
   sortName: 'Nom',
   sortFans: 'Plus de fans',
@@ -1611,12 +1706,30 @@ function localizedPath(route: Route, language: Language): string {
   return `${prefix}${route === '/' ? '' : route}` || '/';
 }
 
+function localizedDeclarationPath(declarationId: string, language: Language): string {
+  const prefix = localePrefix(language);
+  return `${prefix}/declaration/${encodeURIComponent(declarationId)}`;
+}
+
 function absoluteLocalizedUrl(route: Route, language: Language): string {
   return `${siteBaseUrl}${localizedPath(route, language)}`;
 }
 
+function absoluteLocalizedDeclarationUrl(declarationId: string, language: Language): string {
+  return `${siteBaseUrl}${localizedDeclarationPath(declarationId, language)}`;
+}
+
 function seoFor(route: Route, language: Language): RouteSeo {
   return routeSeoByLanguage[language][route] ?? englishRouteSeo[route];
+}
+
+function declarationSeo(language: Language): RouteSeo {
+  const homeSeo = seoFor('/', language);
+  return {
+    title: `Pokémon Declaration | Favmon`,
+    socialTitle: `Pokémon Declaration | Favmon`,
+    description: homeSeo.description,
+  };
 }
 
 function alternateLinksForRoute(route: Route): Array<{ hreflang: string; href: string }> {
@@ -1629,10 +1742,46 @@ function alternateLinksForRoute(route: Route): Array<{ hreflang: string; href: s
   ];
 }
 
-function routeAndLanguageFromPathname(pathname: string): { route: Route; language: Language } {
+function alternateLinksForLocation(location: AppLocation): Array<{ hreflang: string; href: string }> {
+  if (location.route === '/declaration' && location.declarationId) {
+    return [
+      { hreflang: 'x-default', href: absoluteLocalizedDeclarationUrl(location.declarationId, 'en') },
+      ...localeOptions.map((option) => ({
+        hreflang: option.code,
+        href: absoluteLocalizedDeclarationUrl(location.declarationId!, option.code),
+      })),
+    ];
+  }
+  if (location.route === '/declaration') {
+    return alternateLinksForRoute('/');
+  }
+  return alternateLinksForRoute(location.route);
+}
+
+function canonicalUrlForLocation(location: AppLocation): string {
+  if (location.route === '/declaration' && location.declarationId) {
+    return absoluteLocalizedDeclarationUrl(location.declarationId, location.language);
+  }
+  if (location.route === '/declaration') {
+    return absoluteLocalizedUrl('/', location.language);
+  }
+  return absoluteLocalizedUrl(location.route, location.language);
+}
+
+function routeAndLanguageFromPathname(pathname: string): AppLocation {
+  const language = localeFromPathname(pathname);
+  const path = stripLocalePrefix(pathname).replace(/\/+$/, '') || '/';
+  const declarationMatch = path.match(/^\/declaration\/([^/]+)$/);
+  if (declarationMatch) {
+    return {
+      route: '/declaration',
+      language,
+      declarationId: decodeURIComponent(declarationMatch[1]),
+    };
+  }
   return {
     route: normalizeRoute(pathname),
-    language: localeFromPathname(pathname),
+    language,
   };
 }
 
@@ -1657,10 +1806,10 @@ function upsertLinkHref(rel: string, href: string) {
   link.setAttribute('href', href);
 }
 
-function syncAlternateLinks(route: Route) {
+function syncAlternateLinksForLocation(location: AppLocation) {
   document.querySelectorAll('link[rel="alternate"][hreflang]').forEach((link) => link.remove());
   const fragment = document.createDocumentFragment();
-  alternateLinksForRoute(route).forEach((alternate) => {
+  alternateLinksForLocation(location).forEach((alternate) => {
     const link = document.createElement('link');
     link.setAttribute('rel', 'alternate');
     link.setAttribute('hreflang', alternate.hreflang);
@@ -1675,13 +1824,14 @@ function buildStructuredData({
   language,
   seo,
   faq,
+  canonicalUrl,
 }: {
-  route: Route;
+  route: AppRoute;
   language: Language;
   seo: RouteSeo;
   faq: Array<{ question: string; answer: string }>;
+  canonicalUrl: string;
 }) {
-  const canonicalUrl = absoluteLocalizedUrl(route, language);
   const pageId = `${canonicalUrl}#webpage`;
   const websiteId = `${siteBaseUrl}/#website`;
   const organizationId = `${siteBaseUrl}/#organization`;
@@ -1790,7 +1940,7 @@ function buildStructuredData({
   };
 }
 
-function syncStructuredData(route: Route, language: Language, seo: RouteSeo, faq: Array<{ question: string; answer: string }>) {
+function syncStructuredData(route: AppRoute, language: Language, seo: RouteSeo, faq: Array<{ question: string; answer: string }>, canonicalUrl: string) {
   let script = document.querySelector('script#structured-data') as HTMLScriptElement | null;
   if (!script) {
     script = document.createElement('script');
@@ -1798,7 +1948,7 @@ function syncStructuredData(route: Route, language: Language, seo: RouteSeo, faq
     script.type = 'application/ld+json';
     document.head.append(script);
   }
-  script.textContent = JSON.stringify(buildStructuredData({ route, language, seo, faq }));
+  script.textContent = JSON.stringify(buildStructuredData({ route, language, seo, faq, canonicalUrl }));
 }
 
 type CardFormatKey = 'square' | 'vertical' | 'horizontal';
@@ -1824,6 +1974,123 @@ const cardFormats: Record<CardFormatKey, { width: number; height: number; labelK
   vertical: { width: 1080, height: 1920, labelKey: 'cardVertical', sub: '1080x1920' },
   horizontal: { width: 1200, height: 630, labelKey: 'cardHorizontal', sub: '1200x630' },
 };
+
+type ShareIconKey = 'send' | 'message' | 'mail' | 'link';
+type ShareIntent = {
+  title: string;
+  text: string;
+  url: string;
+  mediaUrl: string;
+};
+type SharePlatform = {
+  key: string;
+  label: string;
+  badge: string;
+  icon: ShareIconKey;
+  featured?: boolean;
+  buildHref: (intent: ShareIntent) => string;
+};
+
+const sharePlatforms: SharePlatform[] = [
+  {
+    key: 'x',
+    label: 'X',
+    badge: 'X',
+    icon: 'send',
+    featured: true,
+    buildHref: ({ text, url }) =>
+      `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`,
+  },
+  {
+    key: 'reddit',
+    label: 'Reddit',
+    badge: 'R',
+    icon: 'message',
+    featured: true,
+    buildHref: ({ title, url }) =>
+      `https://www.reddit.com/submit?url=${encodeURIComponent(url)}&title=${encodeURIComponent(title)}`,
+  },
+  {
+    key: 'bluesky',
+    label: 'Bluesky',
+    badge: 'B',
+    icon: 'send',
+    buildHref: ({ text, url }) =>
+      `https://bsky.app/intent/compose?text=${encodeURIComponent(`${text} ${url}`)}`,
+  },
+  {
+    key: 'threads',
+    label: 'Threads',
+    badge: 'T',
+    icon: 'send',
+    buildHref: ({ text, url }) =>
+      `https://www.threads.com/intent/post?text=${encodeURIComponent(`${text} ${url}`)}`,
+  },
+  {
+    key: 'facebook',
+    label: 'Facebook',
+    badge: 'F',
+    icon: 'link',
+    buildHref: ({ url }) =>
+      `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,
+  },
+  {
+    key: 'whatsapp',
+    label: 'WhatsApp',
+    badge: 'W',
+    icon: 'message',
+    buildHref: ({ text, url }) =>
+      `https://api.whatsapp.com/send?text=${encodeURIComponent(`${text} ${url}`)}`,
+  },
+  {
+    key: 'telegram',
+    label: 'Telegram',
+    badge: 'TG',
+    icon: 'send',
+    buildHref: ({ text, url }) =>
+      `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`,
+  },
+  {
+    key: 'linkedin',
+    label: 'LinkedIn',
+    badge: 'in',
+    icon: 'link',
+    buildHref: ({ url }) =>
+      `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`,
+  },
+  {
+    key: 'pinterest',
+    label: 'Pinterest',
+    badge: 'P',
+    icon: 'link',
+    buildHref: ({ text, url, mediaUrl }) =>
+      `https://www.pinterest.com/pin/create/button/?url=${encodeURIComponent(url)}&description=${encodeURIComponent(text)}&media=${encodeURIComponent(mediaUrl)}`,
+  },
+  {
+    key: 'tumblr',
+    label: 'Tumblr',
+    badge: 't',
+    icon: 'message',
+    buildHref: ({ title, text, url }) =>
+      `https://www.tumblr.com/widgets/share/tool?canonicalUrl=${encodeURIComponent(url)}&title=${encodeURIComponent(title)}&caption=${encodeURIComponent(text)}`,
+  },
+  {
+    key: 'line',
+    label: 'LINE',
+    badge: 'L',
+    icon: 'message',
+    buildHref: ({ text, url }) =>
+      `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`,
+  },
+  {
+    key: 'email',
+    label: 'Email',
+    badge: '@',
+    icon: 'mail',
+    buildHref: ({ title, text, url }) =>
+      `mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(`${text}\n\n${url}`)}`,
+  },
+];
 
 const featuredPokemon = [
   { id: 25, name: 'Pikachu', number: '#025', generationLabel: 'Gen I' },
@@ -2370,16 +2637,71 @@ async function generatePokemonCardCanvas(
   return canvas;
 }
 
+function cardFileName(pokemonName: string, format: CardFormatKey, shiny: boolean) {
+  const slug = pokemonName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  return `my-favorite-${slug || 'pokemon'}${shiny ? '-shiny' : ''}-${format}.png`;
+}
+
 function downloadCard(canvas: HTMLCanvasElement, pokemonName: string, format: CardFormatKey, shiny: boolean) {
   const link = document.createElement('a');
-  const slug = pokemonName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-  link.download = `my-favorite-${slug || 'pokemon'}${shiny ? '-shiny' : ''}-${format}.png`;
+  link.download = cardFileName(pokemonName, format, shiny);
   link.href = canvas.toDataURL('image/png');
   link.click();
 }
 
+function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (blob) {
+        resolve(blob);
+      } else {
+        reject(new Error('Could not prepare the card image.'));
+      }
+    }, 'image/png');
+  });
+}
+
+async function canvasToShareFile(
+  canvas: HTMLCanvasElement,
+  pokemonName: string,
+  format: CardFormatKey,
+  shiny: boolean,
+): Promise<File> {
+  const blob = await canvasToPngBlob(canvas);
+  return new File([blob], cardFileName(pokemonName, format, shiny), { type: 'image/png' });
+}
+
+async function copyTextToClipboard(text: string): Promise<void> {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.setAttribute('readonly', '');
+  textarea.style.position = 'fixed';
+  textarea.style.inset = '0 auto auto 0';
+  textarea.style.opacity = '0';
+  document.body.append(textarea);
+  textarea.select();
+  textarea.setSelectionRange(0, textarea.value.length);
+  const copied = document.execCommand('copy');
+  textarea.remove();
+  if (!copied) {
+    throw new Error('Copy command failed.');
+  }
+}
+
+function SharePlatformIcon({ icon }: { icon: ShareIconKey }) {
+  if (icon === 'mail') return <Mail size={15} aria-hidden="true" />;
+  if (icon === 'message') return <MessageCircle size={15} aria-hidden="true" />;
+  if (icon === 'link') return <Link2 size={15} aria-hidden="true" />;
+  return <Send size={15} aria-hidden="true" />;
+}
+
 export default function App() {
-  const [{ route, language }, setLocationState] = useState(() =>
+  const [{ route, language, declarationId }, setLocationState] = useState(() =>
     routeAndLanguageFromPathname(window.location.pathname),
   );
   const [mode, setMode] = useState<Mode>(() => readMode());
@@ -2532,8 +2854,9 @@ export default function App() {
   }, [language]);
 
   useEffect(() => {
-    const seo = seoFor(route, language);
-    const canonicalUrl = absoluteLocalizedUrl(route, language);
+    const currentLocation = { route, language, declarationId };
+    const seo = route === '/declaration' ? declarationSeo(language) : seoFor(route, language);
+    const canonicalUrl = canonicalUrlForLocation(currentLocation);
     const faq = [
       { question: t.faqWhatQuestion, answer: t.faqWhatAnswer },
       { question: t.faqShareQuestion, answer: t.faqShareAnswer },
@@ -2556,9 +2879,9 @@ export default function App() {
     upsertMetaContent('name', 'twitter:title', seo.socialTitle);
     upsertMetaContent('name', 'twitter:description', seo.description);
     upsertMetaContent('name', 'twitter:image', twitterImageUrl);
-    syncAlternateLinks(route);
-    syncStructuredData(route, language, seo, faq);
-  }, [route, language, t]);
+    syncAlternateLinksForLocation(currentLocation);
+    syncStructuredData(route, language, seo, faq, canonicalUrl);
+  }, [route, language, declarationId, t]);
 
   const displayPokemon = useMemo(() => mergePokemonStats(pokemon, stats), [pokemon, stats]);
   const activeLocaleOption = localeOptions.find((option) => option.code === language) ?? localeOptions[0];
@@ -2576,9 +2899,11 @@ export default function App() {
   }
 
   function changeLanguage(nextLanguage: Language) {
-    const nextPath = localizedPath(route, nextLanguage);
+    const nextPath = route === '/declaration' && declarationId
+      ? localizedDeclarationPath(declarationId, nextLanguage)
+      : localizedPath(route === '/declaration' ? '/' : route, nextLanguage);
     window.history.pushState({}, '', nextPath);
-    setLocationState({ route, language: nextLanguage });
+    setLocationState({ route, language: nextLanguage, declarationId });
     setLanguageMenuOpen(false);
   }
 
@@ -2686,6 +3011,7 @@ export default function App() {
             loading={loading}
             declarations={declarations}
             mode={mode}
+            language={language}
             t={t}
             onSubmitted={handleDeclarationSubmitted}
           />
@@ -2705,6 +3031,15 @@ export default function App() {
             t={t}
           />
         )}
+        {route === '/declaration' && declarationId && (
+          <DeclarationDetailPage
+            declarationId={declarationId}
+            pokemon={displayPokemon}
+            language={language}
+            t={t}
+            onModeResolved={setMode}
+          />
+        )}
       </main>
 
       {route !== '/game' && route !== '/explore' && <Footer t={t} />}
@@ -2720,7 +3055,7 @@ function NavLink({
   children,
 }: {
   route: Route;
-  activeRoute: Route;
+  activeRoute: AppRoute;
   language: Language;
   onNavigate: (event: MouseEvent<HTMLAnchorElement>, route: Route) => void;
   children: string;
@@ -2741,6 +3076,7 @@ function DeclarePage({
   loading,
   declarations,
   mode,
+  language,
   t,
   onSubmitted,
 }: {
@@ -2748,6 +3084,7 @@ function DeclarePage({
   loading: boolean;
   declarations: Declaration[];
   mode: Mode;
+  language: Language;
   t: TranslationMessages;
   onSubmitted: (declaration: Declaration) => void;
 }) {
@@ -2844,7 +3181,7 @@ function DeclarePage({
       </div>
 
       {alreadyDeclared ? (
-        <DeclarationSuccessPanel id="trainer-terminal" summary={submittedSummary} t={t} />
+        <DeclarationSuccessPanel id="trainer-terminal" summary={submittedSummary} language={language} t={t} />
       ) : (
         <form id="trainer-terminal" className="declaration-form trainer-console" onSubmit={submit}>
           <div className="trainer-console-header">
@@ -2936,8 +3273,6 @@ function DeclarePage({
         </form>
       )}
 
-      <SeoFaq t={t} />
-
       <section className="latest-strip" aria-label={t.latest}>
         {declarations.slice(0, 3).map((declaration) => (
           <article className="latest-card" key={declaration.id}>
@@ -2952,6 +3287,8 @@ function DeclarePage({
           </article>
         ))}
       </section>
+
+      <SeoFaq t={t} />
     </section>
   );
 }
@@ -2984,10 +3321,12 @@ function SeoFaq({ t }: { t: TranslationMessages }) {
 function DeclarationSuccessPanel({
   id,
   summary,
+  language,
   t,
 }: {
   id?: string;
   summary: LocalDeclarationSummary | null;
+  language: Language;
   t: TranslationMessages;
 }) {
   const declaration = summary?.declaration;
@@ -3024,6 +3363,10 @@ function DeclarationSuccessPanel({
             <p className="success-progress">
               {template(t.journeyContinues, { count: String(summary.revealedCount) })}
             </p>
+            <a className="success-public-link" href={localizedDeclarationPath(declaration.id, language)}>
+              <Share2 size={16} aria-hidden="true" />
+              {t.shareTerminalTitle}
+            </a>
             <div className="success-declaration">
               <span>{t.reason}</span>
               <p>{declaration.reason}</p>
@@ -3032,7 +3375,7 @@ function DeclarationSuccessPanel({
 
           <div className="success-share-column">
             <p className="success-note">{t.instagramChangeFormMsg}</p>
-            <PokemonCardDownloader declaration={declaration} t={t} />
+            <PokemonCardDownloader declaration={declaration} language={language} t={t} />
           </div>
         </div>
       ) : (
@@ -3042,7 +3385,15 @@ function DeclarationSuccessPanel({
   );
 }
 
-function PokemonCardDownloader({ declaration, t }: { declaration: Declaration; t: TranslationMessages }) {
+function PokemonCardDownloader({
+  declaration,
+  language,
+  t,
+}: {
+  declaration: Declaration;
+  language: Language;
+  t: TranslationMessages;
+}) {
   const [artStyle, setArtStyle] = useState<CardArtStyle>('official');
   const [format, setFormat] = useState<CardFormatKey>('square');
   const [shiny, setShiny] = useState(false);
@@ -3050,7 +3401,28 @@ function PokemonCardDownloader({ declaration, t }: { declaration: Declaration; t
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [downloaded, setDownloaded] = useState<Partial<Record<CardFormatKey, boolean>>>({});
+  const [shareStatus, setShareStatus] = useState('');
   const previewRef = useRef<HTMLDivElement>(null);
+  const shareStatusTimerRef = useRef<number | null>(null);
+
+  const shareIntent = useMemo<ShareIntent>(() => {
+    const pokemonName = formatPokemonName(declaration.pokemonName);
+    const title = template(t.shareTitleText, {
+      trainer: declaration.trainerName,
+      pokemon: pokemonName,
+    });
+    const text = template(declaration.mode === 'not_favourite' ? t.shareLeastText : t.shareFavouriteText, {
+      trainer: declaration.trainerName,
+      pokemon: pokemonName,
+    });
+
+    return {
+      title,
+      text,
+      url: absoluteLocalizedDeclarationUrl(declaration.id, language),
+      mediaUrl: twitterImageUrl,
+    };
+  }, [declaration.id, declaration.mode, declaration.pokemonName, declaration.trainerName, language, t]);
 
   const generateCards = useCallback(async () => {
     setLoading(true);
@@ -3073,6 +3445,12 @@ function PokemonCardDownloader({ declaration, t }: { declaration: Declaration; t
   useEffect(() => {
     void generateCards();
   }, [generateCards]);
+
+  useEffect(() => () => {
+    if (shareStatusTimerRef.current) {
+      window.clearTimeout(shareStatusTimerRef.current);
+    }
+  }, []);
 
   useEffect(() => {
     const sourceCanvas = canvases[format];
@@ -3098,6 +3476,65 @@ function PokemonCardDownloader({ declaration, t }: { declaration: Declaration; t
     window.setTimeout(() => {
       setDownloaded((current) => ({ ...current, [nextFormat]: false }));
     }, 2400);
+  }
+
+  function flashShareStatus(message: string) {
+    setShareStatus(message);
+    if (shareStatusTimerRef.current) {
+      window.clearTimeout(shareStatusTimerRef.current);
+    }
+    shareStatusTimerRef.current = window.setTimeout(() => {
+      setShareStatus('');
+      shareStatusTimerRef.current = null;
+    }, 2600);
+  }
+
+  async function handleNativeShare() {
+    const canvas = canvases[format];
+    if (!canvas) return;
+
+    const textPayload = {
+      title: shareIntent.title,
+      text: shareIntent.text,
+      url: shareIntent.url,
+    };
+
+    try {
+      if (navigator.share) {
+        let sharedWithFile = false;
+        if (navigator.canShare) {
+          const file = await canvasToShareFile(canvas, declaration.pokemonName, format, shiny);
+          const filePayload = { ...textPayload, files: [file] };
+          if (navigator.canShare(filePayload)) {
+            await navigator.share(filePayload);
+            sharedWithFile = true;
+          }
+        }
+
+        if (!sharedWithFile) {
+          await navigator.share(textPayload);
+        }
+        flashShareStatus(t.shareOpened);
+        return;
+      }
+
+      await copyTextToClipboard(`${shareIntent.text}\n${shareIntent.url}`);
+      flashShareStatus(t.shareFallbackCopied);
+    } catch (shareError) {
+      if (shareError instanceof DOMException && shareError.name === 'AbortError') return;
+      await copyTextToClipboard(`${shareIntent.text}\n${shareIntent.url}`);
+      flashShareStatus(t.shareFallbackCopied);
+    }
+  }
+
+  async function handleCopyLink() {
+    await copyTextToClipboard(shareIntent.url);
+    flashShareStatus(t.shareCopied);
+  }
+
+  async function handleCopyText() {
+    await copyTextToClipboard(`${shareIntent.text}\n${shareIntent.url}`);
+    flashShareStatus(t.shareCopied);
   }
 
   return (
@@ -3154,6 +3591,246 @@ function PokemonCardDownloader({ declaration, t }: { declaration: Declaration; t
         {loading && <div className="spinner" aria-label={t.generatingCards} />}
         {error && <p className="message error">{error}</p>}
         <div ref={previewRef} className="share-preview-canvas" />
+      </div>
+
+      <div className="share-terminal" aria-label={t.shareTerminalTitle}>
+        <div className="share-terminal-header">
+          <span className="share-terminal-icon" aria-hidden="true">
+            <Share2 size={24} />
+          </span>
+          <div>
+            <h4>{t.shareTerminalTitle}</h4>
+            <p>{t.shareTerminalLead}</p>
+          </div>
+        </div>
+
+        <div className="share-terminal-actions">
+          <button
+            type="button"
+            className="share-native-button"
+            onClick={() => void handleNativeShare()}
+            disabled={loading || Boolean(error) || !canvases[format]}
+          >
+            <Share2 size={22} />
+            <span>{t.shareNativeCard}</span>
+          </button>
+          <button
+            type="button"
+            className="share-quick-button"
+            onClick={() => void handleCopyLink()}
+          >
+            <Link2 size={20} />
+            <span>{t.shareCopyLink}</span>
+          </button>
+          <button
+            type="button"
+            className="share-quick-button"
+            onClick={() => void handleCopyText()}
+          >
+            <Copy size={20} />
+            <span>{t.shareCopyText}</span>
+          </button>
+        </div>
+
+        {shareStatus && (
+          <p className="share-status" role="status">
+            <Check size={15} aria-hidden="true" />
+            <span>{shareStatus}</span>
+          </p>
+        )}
+
+        <div className="share-platform-grid" aria-label={t.shareNetworkGroup}>
+          {sharePlatforms.map((platform) => (
+            <a
+              key={platform.key}
+              className={`share-platform share-platform--${platform.key}${platform.featured ? ' share-platform--featured' : ''}`}
+              href={platform.buildHref(shareIntent)}
+              target={platform.key === 'email' ? undefined : '_blank'}
+              rel={platform.key === 'email' ? undefined : 'noopener noreferrer'}
+            >
+              <span className="share-platform-badge">{platform.badge}</span>
+              <span className="share-platform-name">{platform.label}</span>
+              <SharePlatformIcon icon={platform.icon} />
+            </a>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function DeclarationDetailPage({
+  declarationId,
+  pokemon,
+  language,
+  t,
+  onModeResolved,
+}: {
+  declarationId: string;
+  pokemon: PokemonRow[];
+  language: Language;
+  t: TranslationMessages;
+  onModeResolved: (mode: Mode) => void;
+}) {
+  const [detail, setDetail] = useState<DeclarationDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let alive = true;
+    setLoading(true);
+    setError('');
+    loadDeclarationDetail(declarationId)
+      .then((payload) => {
+        if (!alive) return;
+        setDetail(payload);
+        if (!payload) {
+          setError(t.declarationsLoadError);
+        }
+      })
+      .catch((detailError: unknown) => {
+        if (alive) {
+          setDetail(null);
+          setError(detailError instanceof Error ? detailError.message : t.declarationsLoadError);
+        }
+      })
+      .finally(() => {
+        if (alive) setLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [declarationId, t.declarationsLoadError]);
+
+  useEffect(() => {
+    if (detail?.declaration.mode) {
+      onModeResolved(detail.declaration.mode);
+    }
+  }, [detail, onModeResolved]);
+
+  useEffect(() => {
+    if (!detail) return;
+    const declaration = detail.declaration;
+    const pokemonName = formatPokemonName(declaration.pokemonName);
+    const title = `${declaration.trainerName} ${t.chose} ${pokemonName} | Favmon`;
+    const description = declaration.reason.length > 150
+      ? `${declaration.reason.slice(0, 147)}...`
+      : declaration.reason;
+    document.title = title;
+    upsertMetaContent('property', 'og:title', title);
+    upsertMetaContent('name', 'twitter:title', title);
+    upsertMetaContent('name', 'description', description);
+    upsertMetaContent('property', 'og:description', description);
+    upsertMetaContent('name', 'twitter:description', description);
+  }, [detail, t.chose]);
+
+  if (loading) {
+    return (
+      <section className="page declaration-detail-page">
+        <div className="detail-loading-card">
+          <div className="spinner" aria-label={t.loadingDeclarations} />
+          <p>{t.loadingDeclarations}</p>
+        </div>
+      </section>
+    );
+  }
+
+  if (!detail) {
+    return (
+      <section className="page declaration-detail-page">
+        <div className="detail-loading-card detail-loading-card--error">
+          <p className="eyebrow">{t.fanDeclaration}</p>
+          <h1>{t.noDeclarationsYet}</h1>
+          <p className="message warning">{error || t.declarationsLoadError}</p>
+          <a className="primary-button detail-page-cta" href={localizedPath('/', language)}>
+            {t.declare}
+          </a>
+        </div>
+      </section>
+    );
+  }
+
+  const declaration = detail.declaration;
+  const pokemonName = formatPokemonName(declaration.pokemonName);
+  const matchedPokemon = pokemon.find((row) => row.id === declaration.pokemonId);
+  const coverage = (detail.revealedCount / 1025) * 100;
+  const createdAt = new Date(declaration.createdAt).toLocaleDateString(language, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+
+  return (
+    <section className="page declaration-detail-page">
+      <div className="declaration-result-hero">
+        <div className="declaration-result-copy">
+          <p className="eyebrow">{t.fanDeclaration}</p>
+          <h1>
+            {declaration.trainerName} {t.chose} {pokemonName}
+          </h1>
+          <p className="declaration-result-reason">"{declaration.reason}"</p>
+          <div className="declaration-result-actions">
+            <a className="primary-button detail-page-cta" href={localizedPath('/', language)}>
+              {t.declare}
+            </a>
+            <a className="secondary-button detail-page-cta" href={localizedPath('/stats', language)}>
+              {t.viewStats}
+            </a>
+          </div>
+        </div>
+        <aside className="declaration-result-card">
+          <span className="declaration-result-date">{createdAt}</span>
+          <img
+            className="declaration-result-art"
+            src={officialArtworkUrl(declaration.pokemonId)}
+            alt=""
+            width={475}
+            height={475}
+            loading="eager"
+            decoding="async"
+          />
+          <div className="declaration-result-pokemon">
+            <PokemonSprite pokemonId={declaration.pokemonId} name={pokemonName} />
+            <div>
+              <span>{t.declaredPokemon}</span>
+              <strong>{pokemonName}</strong>
+              <small>#{String(declaration.pokemonId).padStart(3, '0')} · {generationLabel(getGeneration(declaration.pokemonId))}</small>
+            </div>
+          </div>
+          {matchedPokemon && (
+            <div className="declaration-result-types">
+              {matchedPokemon.types.map((type) => (
+                <span className="type-badge" key={type}>
+                  <img src={typeIconUrl(type)} alt="" width={17} height={17} loading="lazy" decoding="async" />
+                  {t[typeLabelKeys[type]]}
+                </span>
+              ))}
+            </div>
+          )}
+        </aside>
+      </div>
+
+      <div className="declaration-result-metrics">
+        <article>
+          <span>{t.fans}</span>
+          <strong>{detail.fanCount.toLocaleString(language)}</strong>
+        </article>
+        <article>
+          <span>{t.rank}</span>
+          <strong>{detail.rank ? `#${detail.rank}` : '-'}</strong>
+        </article>
+        <article>
+          <span>{t.pokedexCovered}</span>
+          <strong>{coverage.toFixed(1)}%</strong>
+        </article>
+        <article>
+          <span>{t.declarations}</span>
+          <strong>{detail.totalDeclarations.toLocaleString(language)}</strong>
+        </article>
+      </div>
+
+      <div className="declaration-result-share">
+        <PokemonCardDownloader declaration={declaration} language={language} t={t} />
       </div>
     </section>
   );

@@ -1,6 +1,6 @@
 # Pricing - Favmon
 
-Last updated: 2026-06-17
+Last updated: 2026-06-21
 
 ## Free
 

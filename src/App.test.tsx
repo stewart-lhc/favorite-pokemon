@@ -245,5 +245,62 @@ describe('Favorite Pokemon clone', () => {
     expect(screen.getByRole('button', { name: /Square \(Instagram\)/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Story \(TikTok\)/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Banner \(X\/Twitter\)/ })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Share your declaration' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Share your declaration' })).toHaveAttribute('href', '/declaration/posted-1');
+    expect(screen.getByRole('button', { name: 'Share card' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Copy link' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Copy caption' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /X/ })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Reddit/ })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Bluesky/ })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Threads/ })).toBeInTheDocument();
+  });
+
+  it('renders a shareable declaration detail route', async () => {
+    window.history.replaceState({}, '', '/declaration/posted-1');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url === '/api/declarations?id=posted-1') {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              declaration: {
+                id: 'posted-1',
+                trainerName: 'Ari',
+                pokemonId: 25,
+                pokemonName: 'pikachu',
+                reason: 'Pikachu has been my favourite forever',
+                mode: 'favourite',
+                createdAt: '2026-06-13T10:00:00.000Z',
+              },
+              fanCount: 13,
+              revealedCount: 7,
+              rank: 2,
+              totalDeclarations: 22,
+            }),
+          });
+        }
+        if (url.startsWith('/api/data')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => backendData,
+          });
+        }
+        return Promise.resolve({
+          ok: true,
+          json: async () => pokemonData,
+        });
+      }),
+    );
+
+    render(<App />);
+
+    expect(await screen.findByRole('heading', { name: /Ari chose Pikachu/i })).toBeInTheDocument();
+    expect(screen.getByText('"Pikachu has been my favourite forever"')).toBeInTheDocument();
+    expect(screen.getByText('13')).toBeInTheDocument();
+    expect(screen.getByText('#2')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Download your Pokémon card!' })).toBeInTheDocument();
   });
 });

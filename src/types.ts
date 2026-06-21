@@ -83,6 +83,11 @@ export type DeclarationResult = {
   revealedCount: number;
 };
 
+export type DeclarationDetail = DeclarationResult & {
+  rank: number | null;
+  totalDeclarations: number;
+};
+
 export type LocalDeclarationSummary = {
   declaration: Declaration;
   fanCount: number;

@@ -50,6 +50,11 @@
       "statusCode": 301
     },
     {
+      "source": "/declaration/:id/",
+      "destination": "/declaration/:id",
+      "statusCode": 301
+    },
+    {
       "source": "/:locale(ja|ko|zh-cn|zh-tw|zh-hk|es|es-cl|es-pr|es-cr|fr)/",
       "destination": "/:locale",
       "statusCode": 301
@@ -57,6 +62,11 @@
     {
       "source": "/:locale(ja|ko|zh-cn|zh-tw|zh-hk|es|es-cl|es-pr|es-cr|fr)/:route(game|explore|pokedex|stats)/",
       "destination": "/:locale/:route",
+      "statusCode": 301
+    },
+    {
+      "source": "/:locale(ja|ko|zh-cn|zh-tw|zh-hk|es|es-cl|es-pr|es-cr|fr)/declaration/:id/",
+      "destination": "/:locale/declaration/:id",
       "statusCode": 301
     }
   ],
@@ -106,6 +116,14 @@
     {
       "source": "/:route(game|explore|pokedex|stats)",
       "destination": "/_seo/:route.html"
+    },
+    {
+      "source": "/declaration/:id",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/:locale(ja|ko|zh-cn|zh-tw|zh-hk|es|es-cl|es-pr|es-cr|fr)/declaration/:id",
+      "destination": "/index.html"
     },
     {
       "source": "/:locale(ja|ko|zh-cn|zh-tw|zh-hk|es|es-cl|es-pr|es-cr|fr)",

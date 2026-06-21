@@ -1,4 +1,4 @@
-import type { BackendData, Declaration, DeclarationInput, DeclarationResult, Mode } from '../types';
+import type { BackendData, Declaration, DeclarationDetail, DeclarationInput, DeclarationResult, Mode } from '../types';
 
 const emptyBackendData: BackendData = {
   stats: [],
@@ -38,6 +38,29 @@ export async function loadPokemonDeclarations(
     return Array.isArray(payload.declarations) ? payload.declarations : [];
   } catch {
     return [];
+  }
+}
+
+export async function loadDeclarationDetail(id: string): Promise<DeclarationDetail | null> {
+  try {
+    const params = new URLSearchParams({ id });
+    const response = await fetch(`/api/declarations?${params.toString()}`);
+    if (!response.ok || !isJsonResponse(response)) {
+      return null;
+    }
+    const payload = (await response.json()) as Partial<DeclarationDetail>;
+    if (!payload.declaration) {
+      return null;
+    }
+    return {
+      declaration: payload.declaration,
+      fanCount: Number(payload.fanCount ?? 1),
+      revealedCount: Number(payload.revealedCount ?? 1),
+      rank: typeof payload.rank === 'number' ? payload.rank : null,
+      totalDeclarations: Number(payload.totalDeclarations ?? 1),
+    };
+  } catch {
+    return null;
   }
 }
 
