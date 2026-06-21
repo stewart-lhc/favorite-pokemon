@@ -6,6 +6,10 @@ Last updated: 2026-06-21
 
 Favmon is a fan-made community Pokédex for declaring favorite and least-favorite Pokémon. It combines National Dex Pokémon data, community declarations, popularity rankings, and downloadable trainer cards in one multilingual web app.
 
+## Does each Pokémon have a Favmon detail page?
+
+Yes. Favmon has one canonical detail page for each of the 1025 National Dex Pokémon. The URL pattern is `https://favmon.com/pokemon/:slug`, such as https://favmon.com/pokemon/pikachu. These pages include type, generation, fan count, rank, latest declarations, related Pokémon, and a preselected declaration link.
+
 ## Home
 
 **Every Pokémon is Someone's Favorite | Favmon**: Declare your favorite or least favorite Pokémon, reveal community Pokédex rankings, and download shareable trainer cards on Favmon.

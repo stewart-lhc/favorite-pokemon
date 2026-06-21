@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -17,6 +17,7 @@ import {
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, '..');
 const publicDir = join(root, 'public');
+const pokemonDataPath = join(publicDir, 'data', 'pokemon.json');
 const today = new Date().toISOString().slice(0, 10);
 
 function xmlEscape(value) {
@@ -27,7 +28,36 @@ function xmlEscape(value) {
     .replace(/"/g, '&quot;');
 }
 
-function sitemapXml() {
+function formatPokemonName(rawName) {
+  return String(rawName)
+    .split('-')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join('-');
+}
+
+function generationLabelForPokemon(id) {
+  if (id <= 151) return 'Gen I';
+  if (id <= 251) return 'Gen II';
+  if (id <= 386) return 'Gen III';
+  if (id <= 493) return 'Gen IV';
+  if (id <= 649) return 'Gen V';
+  if (id <= 721) return 'Gen VI';
+  if (id <= 809) return 'Gen VII';
+  if (id <= 905) return 'Gen VIII';
+  return 'Gen IX';
+}
+
+async function loadPokemonRows() {
+  try {
+    const payload = JSON.parse(await readFile(pokemonDataPath, 'utf8'));
+    if (!Array.isArray(payload)) return [];
+    return payload.filter((row) => Number.isInteger(row.id) && typeof row.slug === 'string' && row.slug);
+  } catch {
+    return [];
+  }
+}
+
+function sitemapXml(pokemonRows) {
   const entries = [];
   for (const route of routes) {
     for (const locale of localeOptions) {
@@ -48,9 +78,17 @@ ${alternates}
     }
   }
 
+  const pokemonEntries = pokemonRows.map((row) => `  <url>
+    <loc>${xmlEscape(`${siteBaseUrl}/pokemon/${row.slug}`)}</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>`);
+
   const aiFiles = [
     { loc: `${siteBaseUrl}/llms.txt`, changefreq: 'weekly', priority: '0.6' },
     { loc: `${siteBaseUrl}/answers.md`, changefreq: 'weekly', priority: '0.6' },
+    { loc: `${siteBaseUrl}/pokemon-pages.md`, changefreq: 'weekly', priority: '0.6' },
     { loc: `${siteBaseUrl}/pricing.md`, changefreq: 'monthly', priority: '0.4' },
   ].map(
     (entry) => `  <url>
@@ -63,7 +101,7 @@ ${alternates}
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
-${[...entries, ...aiFiles].join('\n')}
+${[...entries, ...pokemonEntries, ...aiFiles].join('\n')}
 </urlset>
 `;
 }
@@ -122,10 +160,13 @@ Last updated: ${today}
 - A "Who's More Loved?" guessing game based on declaration data.
 - Downloadable social cards in square, story, and X/Twitter banner formats.
 - Multilingual entry points for English, Japanese, Korean, Chinese, Spanish, and French audiences.
+- Canonical Pokémon detail pages at /pokemon/:slug for all 1025 National Dex Pokémon.
 
 ## Important Pages
 
 ${pageLinks}
+- Pokémon detail page index: ${siteBaseUrl}/pokemon-pages.md
+- Example Pokémon page: ${siteBaseUrl}/pokemon/pikachu
 - AI answer file: ${siteBaseUrl}/answers.md
 - Pricing and access: ${siteBaseUrl}/pricing.md
 
@@ -138,6 +179,28 @@ ${localeLinks}
 This is an independent fan-made website. It is not affiliated with or endorsed by Nintendo or The Pokémon Company. Pokémon and related names are trademarks of Nintendo/Creatures Inc./GAME FREAK Inc.
 
 Data sources include PokéAPI for Pokémon names, types, sprites, and official artwork URLs, plus Favmon's own Neon Postgres declaration data.
+`;
+}
+
+function pokemonPagesMd(pokemonRows) {
+  const rows = pokemonRows
+    .map((row) => {
+      const name = formatPokemonName(row.name ?? row.slug);
+      const number = `#${String(row.id).padStart(3, '0')}`;
+      const types = Array.isArray(row.types) ? row.types.join(', ') : '';
+      return `| ${number} | ${name} | ${generationLabelForPokemon(row.id)} | ${types} | ${siteBaseUrl}/pokemon/${row.slug} |`;
+    })
+    .join('\n');
+
+  return `# Favmon Pokémon Detail Pages
+
+Last updated: ${today}
+
+Favmon provides one canonical detail page for each of the 1025 National Dex Pokémon. Each page follows the URL pattern \`${siteBaseUrl}/pokemon/:slug\` and includes National Dex metadata, type, generation, community fan count, rank, recent declarations, related Pokémon, and a direct declaration link.
+
+| Dex | Pokémon | Generation | Types | Canonical URL |
+|---|---|---|---|---|
+${rows}
 `;
 }
 
@@ -164,6 +227,10 @@ Last updated: ${today}
 ## What is Favmon?
 
 Favmon is a fan-made community Pokédex for declaring favorite and least-favorite Pokémon. It combines National Dex Pokémon data, community declarations, popularity rankings, and downloadable trainer cards in one multilingual web app.
+
+## Does each Pokémon have a Favmon detail page?
+
+Yes. Favmon has one canonical detail page for each of the 1025 National Dex Pokémon. The URL pattern is \`${siteBaseUrl}/pokemon/:slug\`, such as ${siteBaseUrl}/pokemon/pikachu. These pages include type, generation, fan count, rank, latest declarations, related Pokémon, and a preselected declaration link.
 
 ${routeBlocks}
 
@@ -199,15 +266,17 @@ Favmon does not currently sell paid plans, subscriptions, or in-app purchases.
 
 async function main() {
   await mkdir(publicDir, { recursive: true });
+  const pokemonRows = await loadPokemonRows();
   await Promise.all([
-    writeFile(join(publicDir, 'sitemap.xml'), sitemapXml()),
+    writeFile(join(publicDir, 'sitemap.xml'), sitemapXml(pokemonRows)),
     writeFile(join(publicDir, 'robots.txt'), robotsTxt()),
     writeFile(join(publicDir, 'llms.txt'), llmsTxt()),
     writeFile(join(publicDir, 'answers.md'), answersMd()),
+    writeFile(join(publicDir, 'pokemon-pages.md'), pokemonPagesMd(pokemonRows)),
     writeFile(join(publicDir, 'pricing.md'), pricingMd()),
   ]);
 
-  console.log(`Generated SEO/AEO assets for ${siteDomain}.`);
+  console.log(`Generated SEO/AEO assets for ${siteDomain} with ${pokemonRows.length} Pokemon detail URLs.`);
 }
 
 main().catch((error) => {

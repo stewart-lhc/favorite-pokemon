@@ -4354,6 +4354,21 @@ h1 {
   gap: 20px;
 }
 
+.pokemon-detail-page {
+  display: grid;
+  gap: 20px;
+}
+
+.pokemon-detail-main-stack {
+  display: grid;
+  align-content: start;
+  gap: 18px;
+}
+
+.pokemon-detail-main-stack .pokemon-detail-metrics {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .declaration-result-hero {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(300px, 400px);
@@ -4394,6 +4409,10 @@ h1 {
 .declaration-result-copy h1 {
   max-width: 820px;
   font-size: clamp(2.8rem, 5.8vw, 5.5rem);
+}
+
+.pokemon-detail-copy h1 {
+  text-transform: none;
 }
 
 .declaration-result-reason {
@@ -4509,6 +4528,86 @@ h1 {
 
 .declaration-result-share {
   padding: clamp(16px, 3vw, 24px);
+}
+
+.pokemon-detail-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.pokemon-detail-section-heading h2 {
+  margin: 0;
+  font-size: clamp(1.45rem, 3vw, 2.1rem);
+}
+
+.pokemon-detail-declaration-list {
+  margin-top: 0;
+}
+
+.pokemon-related-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  gap: 12px;
+}
+
+.pokemon-related-card {
+  display: grid;
+  min-width: 0;
+  place-items: center;
+  gap: 6px;
+  padding: 12px;
+  border: 3px solid var(--panel-line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--game-ink);
+  text-align: center;
+  text-decoration: none;
+  box-shadow: 0 5px 0 rgba(17, 20, 45, 0.1);
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+
+.pokemon-related-card:hover {
+  border-color: var(--pokemon-red);
+  box-shadow: 0 8px 0 rgba(17, 20, 45, 0.13);
+  transform: translateY(-3px);
+}
+
+.pokemon-related-card img {
+  width: 64px;
+  height: 64px;
+  image-rendering: pixelated;
+}
+
+.pokemon-related-card span {
+  color: var(--soft-navy);
+  font-size: 0.82rem;
+  font-weight: 950;
+}
+
+.pokemon-related-card strong {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 0.98rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[data-mode="not_favourite"] .pokemon-related-card {
+  border-color: rgba(124, 242, 154, 0.86);
+  background: #241a38;
+  color: #f9f4ff;
+}
+
+.modal-detail-link {
+  width: fit-content;
+  min-height: 40px;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 0 14px;
+  text-decoration: none;
 }
 
 .detail-loading-card {

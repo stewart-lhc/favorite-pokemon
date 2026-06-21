@@ -73,8 +73,8 @@ const localeOptions = [
 
 type Language = typeof localeOptions[number]['code'];
 type Route = '/' | '/game' | '/explore' | '/pokedex' | '/stats';
-type AppRoute = Route | '/declaration';
-type AppLocation = { route: AppRoute; language: Language; declarationId?: string };
+type AppRoute = Route | '/declaration' | '/pokemon';
+type AppLocation = { route: AppRoute; language: Language; declarationId?: string; pokemonSlug?: string };
 type SortKey = 'number' | 'name' | 'fans';
 type StatusFilter = 'all' | 'revealed' | 'hidden';
 
@@ -467,6 +467,17 @@ const englishTranslations = {
   loadingDeclarations: 'Loading declarations',
   declarationsLoadError: 'Could not load declarations.',
   noDeclarationsYet: 'No declarations yet.',
+  pokemonDetailLead: '{pokemon} has {count} {fans} in the current Favmon community ranking.',
+  relatedPokemon: 'Related Pokemon',
+  pokemonNotFound: 'Pokemon not found',
+  pokemonNotFoundBody: '{pokemon} is not available in the current National Dex data.',
+  pokemonAnswersHeading: '{pokemon} answers',
+  pokemonAnswerFansQuestion: 'How many fans does {pokemon} have on Favmon?',
+  pokemonAnswerFansAnswer: '{pokemon} currently has {count} {fans} in {mode} mode on Favmon.',
+  pokemonAnswerRankQuestion: 'What rank is {pokemon} on Favmon?',
+  pokemonAnswerRankAnswer: '{pokemon} is currently ranked {rank} in the community Pokédex for this mode.',
+  pokemonAnswerDataQuestion: 'Where does this {pokemon} page get its data?',
+  pokemonAnswerDataAnswer: 'This page combines National Dex data from PokéAPI with live Favmon community declarations stored in Neon Postgres.',
   dexScan: 'Dex scan',
   ready: 'Ready',
   legalDisclaimer: 'This site is not affiliated with or endorsed by Nintendo or The Pokémon Company. Pokémon and all related names are trademarks of Nintendo/Creatures Inc./GAME FREAK Inc.',
@@ -622,6 +633,17 @@ const spanishTranslations: TranslationMessages = {
   loadingDeclarations: 'Cargando declaraciones',
   declarationsLoadError: 'No se pudieron cargar las declaraciones.',
   noDeclarationsYet: 'Aún no hay declaraciones.',
+  pokemonDetailLead: '{pokemon} tiene {count} {fans} en el ranking comunitario actual de Favmon.',
+  relatedPokemon: 'Pokémon relacionados',
+  pokemonNotFound: 'Pokémon no encontrado',
+  pokemonNotFoundBody: '{pokemon} no está disponible en los datos actuales de la Dex Nacional.',
+  pokemonAnswersHeading: 'Respuestas sobre {pokemon}',
+  pokemonAnswerFansQuestion: '¿Cuántos fans tiene {pokemon} en Favmon?',
+  pokemonAnswerFansAnswer: '{pokemon} tiene actualmente {count} {fans} en modo {mode} en Favmon.',
+  pokemonAnswerRankQuestion: '¿Qué puesto ocupa {pokemon} en Favmon?',
+  pokemonAnswerRankAnswer: '{pokemon} ocupa actualmente el puesto {rank} en la Pokédex comunitaria para este modo.',
+  pokemonAnswerDataQuestion: '¿De dónde obtiene datos esta página de {pokemon}?',
+  pokemonAnswerDataAnswer: 'Esta página combina datos de la Dex Nacional de PokéAPI con declaraciones comunitarias en vivo guardadas en Neon Postgres.',
   dexScan: 'Escaneo Dex',
   ready: 'Listo',
   legalDisclaimer: 'Este sitio no está afiliado ni respaldado por Nintendo ni The Pokémon Company. Pokémon y todos los nombres relacionados son marcas de Nintendo/Creatures Inc./GAME FREAK Inc.',
@@ -775,6 +797,17 @@ const japaneseTranslations: TranslationMessages = {
   loadingDeclarations: '宣言を読み込み中',
   declarationsLoadError: '宣言を読み込めませんでした。',
   noDeclarationsYet: 'まだ宣言はありません。',
+  pokemonDetailLead: '{pokemon}は現在のFavmonコミュニティランキングで{count}{fans}です。',
+  relatedPokemon: '関連するポケモン',
+  pokemonNotFound: 'ポケモンが見つかりません',
+  pokemonNotFoundBody: '{pokemon}は現在の全国図鑑データにありません。',
+  pokemonAnswersHeading: '{pokemon}の回答',
+  pokemonAnswerFansQuestion: 'Favmonで{pokemon}のファンは何人ですか？',
+  pokemonAnswerFansAnswer: 'Favmonの{mode}モードで、{pokemon}は現在{count}{fans}です。',
+  pokemonAnswerRankQuestion: 'Favmonで{pokemon}は何位ですか？',
+  pokemonAnswerRankAnswer: '{pokemon}はこのモードのコミュニティ図鑑で現在{rank}位です。',
+  pokemonAnswerDataQuestion: 'この{pokemon}ページのデータはどこから来ますか？',
+  pokemonAnswerDataAnswer: 'このページはPokéAPIの全国図鑑データと、Neon Postgresに保存されたFavmonのライブコミュニティ宣言を組み合わせています。',
   dexScan: '図鑑スキャン',
   ready: '準備完了',
   legalDisclaimer: 'このサイトはNintendo、The Pokémon Companyとは提携しておらず、承認も受けていません。Pokémonおよび関連する名称はNintendo/Creatures Inc./GAME FREAK Inc.の商標です。',
@@ -928,6 +961,17 @@ const koreanTranslations: TranslationMessages = {
   loadingDeclarations: '선언 불러오는 중',
   declarationsLoadError: '선언을 불러올 수 없습니다.',
   noDeclarationsYet: '아직 선언이 없습니다.',
+  pokemonDetailLead: '{pokemon}은 현재 Favmon 커뮤니티 순위에서 {count} {fans}입니다.',
+  relatedPokemon: '관련 포켓몬',
+  pokemonNotFound: '포켓몬을 찾을 수 없습니다',
+  pokemonNotFoundBody: '{pokemon}은 현재 전국도감 데이터에 없습니다.',
+  pokemonAnswersHeading: '{pokemon} 답변',
+  pokemonAnswerFansQuestion: 'Favmon에서 {pokemon} 팬은 몇 명인가요?',
+  pokemonAnswerFansAnswer: 'Favmon {mode} 모드에서 {pokemon}은 현재 {count} {fans}입니다.',
+  pokemonAnswerRankQuestion: 'Favmon에서 {pokemon} 순위는 몇 위인가요?',
+  pokemonAnswerRankAnswer: '{pokemon}은 이 모드의 커뮤니티 도감에서 현재 {rank}위입니다.',
+  pokemonAnswerDataQuestion: '이 {pokemon} 페이지의 데이터는 어디에서 오나요?',
+  pokemonAnswerDataAnswer: '이 페이지는 PokéAPI의 전국도감 데이터와 Neon Postgres에 저장된 Favmon 실시간 커뮤니티 선언을 결합합니다.',
   dexScan: '도감 스캔',
   ready: '준비 완료',
   legalDisclaimer: '이 사이트는 Nintendo 또는 The Pokémon Company와 제휴하거나 보증을 받지 않았습니다. Pokémon 및 관련 명칭은 Nintendo/Creatures Inc./GAME FREAK Inc.의 상표입니다.',
@@ -1081,6 +1125,17 @@ const traditionalChineseTranslations: TranslationMessages = {
   loadingDeclarations: '正在載入宣言',
   declarationsLoadError: '無法載入宣言。',
   noDeclarationsYet: '尚無宣言。',
+  pokemonDetailLead: '{pokemon} 目前在 Favmon 社群排名中有 {count} 位{fans}。',
+  relatedPokemon: '相關寶可夢',
+  pokemonNotFound: '找不到寶可夢',
+  pokemonNotFoundBody: '{pokemon} 不在目前的全國圖鑑資料中。',
+  pokemonAnswersHeading: '{pokemon} 問答',
+  pokemonAnswerFansQuestion: '{pokemon} 在 Favmon 有多少粉絲？',
+  pokemonAnswerFansAnswer: '{pokemon} 目前在 Favmon 的 {mode} 模式有 {count} 位{fans}。',
+  pokemonAnswerRankQuestion: '{pokemon} 在 Favmon 排名第幾？',
+  pokemonAnswerRankAnswer: '{pokemon} 目前在這個模式的社群圖鑑中排名 {rank}。',
+  pokemonAnswerDataQuestion: '這個 {pokemon} 頁面的資料從哪裡來？',
+  pokemonAnswerDataAnswer: '此頁結合 PokéAPI 的全國圖鑑資料，以及儲存在 Neon Postgres 的 Favmon 即時社群宣言。',
   dexScan: '圖鑑掃描',
   ready: '就緒',
   legalDisclaimer: '本網站與 Nintendo 或 The Pokémon Company 無關，也未獲其背書。Pokémon 與所有相關名稱為 Nintendo/Creatures Inc./GAME FREAK Inc. 的商標。',
@@ -1234,6 +1289,17 @@ const simplifiedChineseTranslations: TranslationMessages = {
   loadingDeclarations: '正在加载宣言',
   declarationsLoadError: '宣言加载失败。',
   noDeclarationsYet: '还没有宣言。',
+  pokemonDetailLead: '{pokemon} 目前在 Favmon 社区排名中有 {count} 位{fans}。',
+  relatedPokemon: '相关宝可梦',
+  pokemonNotFound: '找不到宝可梦',
+  pokemonNotFoundBody: '{pokemon} 不在当前全国图鉴数据中。',
+  pokemonAnswersHeading: '{pokemon} 问答',
+  pokemonAnswerFansQuestion: '{pokemon} 在 Favmon 有多少粉丝？',
+  pokemonAnswerFansAnswer: '{pokemon} 目前在 Favmon 的 {mode} 模式有 {count} 位{fans}。',
+  pokemonAnswerRankQuestion: '{pokemon} 在 Favmon 排名第几？',
+  pokemonAnswerRankAnswer: '{pokemon} 目前在这个模式的社区图鉴中排名 {rank}。',
+  pokemonAnswerDataQuestion: '这个 {pokemon} 页面数据从哪里来？',
+  pokemonAnswerDataAnswer: '此页面结合 PokéAPI 的全国图鉴数据，以及保存在 Neon Postgres 的 Favmon 实时社区宣言。',
   dexScan: '图鉴扫描',
   ready: '就绪',
   legalDisclaimer: '本站与 Nintendo 或 The Pokémon Company 无关联，也未获得其背书。Pokémon 及相关名称是 Nintendo/Creatures Inc./GAME FREAK Inc. 的商标。',
@@ -1387,6 +1453,17 @@ const frenchTranslations: TranslationMessages = {
   loadingDeclarations: 'Chargement des déclarations',
   declarationsLoadError: 'Impossible de charger les déclarations.',
   noDeclarationsYet: 'Pas encore de déclarations.',
+  pokemonDetailLead: '{pokemon} compte actuellement {count} {fans} dans le classement communautaire Favmon.',
+  relatedPokemon: 'Pokémon associés',
+  pokemonNotFound: 'Pokémon introuvable',
+  pokemonNotFoundBody: '{pokemon} n’est pas disponible dans les données actuelles du Dex National.',
+  pokemonAnswersHeading: 'Réponses sur {pokemon}',
+  pokemonAnswerFansQuestion: 'Combien de fans {pokemon} a-t-il sur Favmon ?',
+  pokemonAnswerFansAnswer: '{pokemon} compte actuellement {count} {fans} en mode {mode} sur Favmon.',
+  pokemonAnswerRankQuestion: 'Quel est le rang de {pokemon} sur Favmon ?',
+  pokemonAnswerRankAnswer: '{pokemon} est actuellement classé {rank} dans le Pokédex communautaire pour ce mode.',
+  pokemonAnswerDataQuestion: 'D’où viennent les données de cette page {pokemon} ?',
+  pokemonAnswerDataAnswer: 'Cette page combine les données du Dex National issues de PokéAPI avec les déclarations communautaires Favmon en direct stockées dans Neon Postgres.',
   dexScan: 'Scan Dex',
   ready: 'Prêt',
   legalDisclaimer: 'Ce site n’est ni affilié à Nintendo ou The Pokémon Company, ni approuvé par eux. Pokémon et tous les noms associés sont des marques de Nintendo/Creatures Inc./GAME FREAK Inc.',
@@ -1680,6 +1757,27 @@ function template(copy: string, values: Record<string, string>): string {
   return copy.replace(/\{(\w+)\}/g, (match, key: string) => values[key] ?? match);
 }
 
+function normalizePokemonLookup(value: string): string {
+  return value.trim().toLowerCase().replace(/^#/, '').replace(/\s+/g, '-');
+}
+
+function findPokemonBySlugOrId(pokemon: PokemonRow[], value: string): PokemonRow | null {
+  const lookup = normalizePokemonLookup(decodeURIComponent(value));
+  if (!lookup) return null;
+  const numericId = /^\d+$/.test(lookup) ? Number(lookup) : null;
+  return pokemon.find((row) =>
+    row.slug.toLowerCase() === lookup ||
+    row.name.toLowerCase() === lookup ||
+    (numericId !== null && row.id === numericId),
+  ) ?? null;
+}
+
+function pokemonDisplayNameFromSlug(slugOrId: string): string {
+  const decoded = normalizePokemonLookup(decodeURIComponent(slugOrId || 'pokemon'));
+  if (/^\d+$/.test(decoded)) return `Pokémon #${decoded.padStart(3, '0')}`;
+  return formatPokemonName(decoded || 'pokemon');
+}
+
 function localeFromPathname(pathname: string): Language {
   const normalizedPathname = pathname.toLowerCase();
   const match = localeOptions
@@ -1711,12 +1809,21 @@ function localizedDeclarationPath(declarationId: string, language: Language): st
   return `${prefix}/declaration/${encodeURIComponent(declarationId)}`;
 }
 
+function localizedPokemonPath(slugOrId: string, language: Language): string {
+  const prefix = localePrefix(language);
+  return `${prefix}/pokemon/${encodeURIComponent(slugOrId)}`;
+}
+
 function absoluteLocalizedUrl(route: Route, language: Language): string {
   return `${siteBaseUrl}${localizedPath(route, language)}`;
 }
 
 function absoluteLocalizedDeclarationUrl(declarationId: string, language: Language): string {
   return `${siteBaseUrl}${localizedDeclarationPath(declarationId, language)}`;
+}
+
+function absoluteLocalizedPokemonUrl(slugOrId: string, language: Language): string {
+  return `${siteBaseUrl}${localizedPokemonPath(slugOrId, language)}`;
 }
 
 function seoFor(route: Route, language: Language): RouteSeo {
@@ -1729,6 +1836,16 @@ function declarationSeo(language: Language): RouteSeo {
     title: `Pokémon Declaration | Favmon`,
     socialTitle: `Pokémon Declaration | Favmon`,
     description: homeSeo.description,
+  };
+}
+
+function pokemonSeo(slugOrId: string): RouteSeo {
+  const pokemonName = pokemonDisplayNameFromSlug(slugOrId);
+  return {
+    title: `${pokemonName} Pokémon stats | Favmon`,
+    socialTitle: `${pokemonName} community Pokémon page | Favmon`,
+    description:
+      `See ${pokemonName}'s Favmon community rank, fan count, type, generation, and latest trainer declarations.`,
   };
 }
 
@@ -1752,8 +1869,14 @@ function alternateLinksForLocation(location: AppLocation): Array<{ hreflang: str
       })),
     ];
   }
+  if (location.route === '/pokemon' && location.pokemonSlug) {
+    return [];
+  }
   if (location.route === '/declaration') {
     return alternateLinksForRoute('/');
+  }
+  if (location.route === '/pokemon') {
+    return alternateLinksForRoute('/pokedex');
   }
   return alternateLinksForRoute(location.route);
 }
@@ -1762,8 +1885,14 @@ function canonicalUrlForLocation(location: AppLocation): string {
   if (location.route === '/declaration' && location.declarationId) {
     return absoluteLocalizedDeclarationUrl(location.declarationId, location.language);
   }
+  if (location.route === '/pokemon' && location.pokemonSlug) {
+    return absoluteLocalizedPokemonUrl(location.pokemonSlug, 'en');
+  }
   if (location.route === '/declaration') {
     return absoluteLocalizedUrl('/', location.language);
+  }
+  if (location.route === '/pokemon') {
+    return absoluteLocalizedUrl('/pokedex', location.language);
   }
   return absoluteLocalizedUrl(location.route, location.language);
 }
@@ -1777,6 +1906,14 @@ function routeAndLanguageFromPathname(pathname: string): AppLocation {
       route: '/declaration',
       language,
       declarationId: decodeURIComponent(declarationMatch[1]),
+    };
+  }
+  const pokemonMatch = path.match(/^\/pokemon\/([^/]+)$/);
+  if (pokemonMatch) {
+    return {
+      route: '/pokemon',
+      language,
+      pokemonSlug: decodeURIComponent(pokemonMatch[1]),
     };
   }
   return {
@@ -1931,6 +2068,33 @@ function buildStructuredData({
           text: item.answer,
         },
       })),
+    });
+  }
+
+  if (route === '/pokemon') {
+    const pokemonName = seo.socialTitle.replace(/\s+community Pokémon page\s+\|\s+Favmon$/i, '');
+    graph.push({
+      '@type': 'FAQPage',
+      '@id': `${canonicalUrl}#faq`,
+      inLanguage: language,
+      mainEntity: [
+        {
+          '@type': 'Question',
+          name: `What is the Favmon page for ${pokemonName}?`,
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: `${pokemonName}'s Favmon page is the canonical community profile for this Pokémon. It combines National Dex data, type and generation facts, live fan counts, ranking context, recent trainer declarations, and links to declare this Pokémon on Favmon.`,
+          },
+        },
+        {
+          '@type': 'Question',
+          name: `Where does ${pokemonName}'s Favmon page get its data?`,
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: `Favmon uses PokéAPI-derived National Dex data for names, types, sprites, and official artwork. Community fan counts, ranks, and declarations come from Favmon's own Neon Postgres database.`,
+          },
+        },
+      ],
     });
   }
 
@@ -2701,7 +2865,7 @@ function SharePlatformIcon({ icon }: { icon: ShareIconKey }) {
 }
 
 export default function App() {
-  const [{ route, language, declarationId }, setLocationState] = useState(() =>
+  const [{ route, language, declarationId, pokemonSlug }, setLocationState] = useState(() =>
     routeAndLanguageFromPathname(window.location.pathname),
   );
   const [mode, setMode] = useState<Mode>(() => readMode());
@@ -2854,8 +3018,12 @@ export default function App() {
   }, [language]);
 
   useEffect(() => {
-    const currentLocation = { route, language, declarationId };
-    const seo = route === '/declaration' ? declarationSeo(language) : seoFor(route, language);
+    const currentLocation = { route, language, declarationId, pokemonSlug };
+    const seo = route === '/declaration'
+      ? declarationSeo(language)
+      : route === '/pokemon'
+        ? pokemonSeo(pokemonSlug ?? '')
+        : seoFor(route, language);
     const canonicalUrl = canonicalUrlForLocation(currentLocation);
     const faq = [
       { question: t.faqWhatQuestion, answer: t.faqWhatAnswer },
@@ -2881,7 +3049,7 @@ export default function App() {
     upsertMetaContent('name', 'twitter:image', twitterImageUrl);
     syncAlternateLinksForLocation(currentLocation);
     syncStructuredData(route, language, seo, faq, canonicalUrl);
-  }, [route, language, declarationId, t]);
+  }, [route, language, declarationId, pokemonSlug, t]);
 
   const displayPokemon = useMemo(() => mergePokemonStats(pokemon, stats), [pokemon, stats]);
   const activeLocaleOption = localeOptions.find((option) => option.code === language) ?? localeOptions[0];
@@ -2901,9 +3069,11 @@ export default function App() {
   function changeLanguage(nextLanguage: Language) {
     const nextPath = route === '/declaration' && declarationId
       ? localizedDeclarationPath(declarationId, nextLanguage)
-      : localizedPath(route === '/declaration' ? '/' : route, nextLanguage);
+      : route === '/pokemon' && pokemonSlug
+        ? localizedPokemonPath(pokemonSlug, nextLanguage)
+      : localizedPath(route === '/declaration' || route === '/pokemon' ? '/' : route, nextLanguage);
     window.history.pushState({}, '', nextPath);
-    setLocationState({ route, language: nextLanguage, declarationId });
+    setLocationState({ route, language: nextLanguage, declarationId, pokemonSlug });
     setLanguageMenuOpen(false);
   }
 
@@ -3040,6 +3210,16 @@ export default function App() {
             onModeResolved={setMode}
           />
         )}
+        {route === '/pokemon' && pokemonSlug && (
+          <PokemonDetailPage
+            pokemonSlug={pokemonSlug}
+            pokemon={displayPokemon}
+            mode={mode}
+            language={language}
+            loading={loading}
+            t={t}
+          />
+        )}
       </main>
 
       {route !== '/game' && route !== '/explore' && <Footer t={t} />}
@@ -3103,6 +3283,16 @@ function DeclarePage({
     setAlreadyDeclared(hasDeclaredOnDevice(mode));
     setSubmittedSummary(getLocalDeclarationSummary(mode));
   }, [mode]);
+
+  useEffect(() => {
+    if (selected || pokemon.length === 0) return;
+    const requestedPokemon = new URLSearchParams(window.location.search).get('pokemon');
+    if (!requestedPokemon) return;
+    const match = findPokemonBySlugOrId(pokemon, requestedPokemon);
+    if (!match) return;
+    setSelected(match);
+    setQuery(match.name);
+  }, [pokemon, selected]);
 
   const filteredPokemon = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -3382,6 +3572,296 @@ function DeclarationSuccessPanel({
         <p className="message warning">{fanMessage}</p>
       )}
     </div>
+  );
+}
+
+function PokemonDetailPage({
+  pokemonSlug,
+  pokemon,
+  mode,
+  language,
+  loading,
+  t,
+}: {
+  pokemonSlug: string;
+  pokemon: PokemonRow[];
+  mode: Mode;
+  language: Language;
+  loading: boolean;
+  t: TranslationMessages;
+}) {
+  const selectedPokemon = useMemo(
+    () => findPokemonBySlugOrId(pokemon, pokemonSlug),
+    [pokemon, pokemonSlug],
+  );
+  const rankedPokemon = useMemo(
+    () => [...pokemon].sort((a, b) => b.votes - a.votes || a.id - b.id),
+    [pokemon],
+  );
+  const rank = selectedPokemon
+    ? rankedPokemon.findIndex((row) => row.id === selectedPokemon.id) + 1
+    : 0;
+  const revealedCount = useMemo(() => pokemon.filter((row) => row.votes > 0).length, [pokemon]);
+  const totalDeclarations = useMemo(() => pokemon.reduce((sum, row) => sum + row.votes, 0), [pokemon]);
+  const coverage = pokemon.length ? (revealedCount / pokemon.length) * 100 : 0;
+  const relatedPokemon = useMemo(() => {
+    if (!selectedPokemon) return [];
+    return pokemon
+      .filter((row) =>
+        row.id !== selectedPokemon.id &&
+        (row.generation === selectedPokemon.generation || row.types.some((type) => selectedPokemon.types.includes(type))),
+      )
+      .sort((a, b) => {
+        const aTypeMatch = a.types.some((type) => selectedPokemon.types.includes(type)) ? 1 : 0;
+        const bTypeMatch = b.types.some((type) => selectedPokemon.types.includes(type)) ? 1 : 0;
+        return bTypeMatch - aTypeMatch || b.votes - a.votes || Math.abs(a.id - selectedPokemon.id) - Math.abs(b.id - selectedPokemon.id);
+      })
+      .slice(0, 6);
+  }, [pokemon, selectedPokemon]);
+  const pokemonAnswerItems = useMemo(() => {
+    if (!selectedPokemon) return [];
+    const rankLabel = rank ? `#${rank}` : '-';
+    return [
+      {
+        question: template(t.pokemonAnswerFansQuestion, { pokemon: selectedPokemon.name }),
+        answer: template(t.pokemonAnswerFansAnswer, {
+          pokemon: selectedPokemon.name,
+          count: selectedPokemon.votes.toLocaleString(language),
+          fans: t.fans,
+          mode: t.modeToggle,
+        }),
+      },
+      {
+        question: template(t.pokemonAnswerRankQuestion, { pokemon: selectedPokemon.name }),
+        answer: template(t.pokemonAnswerRankAnswer, {
+          pokemon: selectedPokemon.name,
+          rank: rankLabel,
+        }),
+      },
+      {
+        question: template(t.pokemonAnswerDataQuestion, { pokemon: selectedPokemon.name }),
+        answer: template(t.pokemonAnswerDataAnswer, { pokemon: selectedPokemon.name }),
+      },
+    ];
+  }, [language, rank, selectedPokemon, t]);
+  const [declarations, setDeclarations] = useState<Declaration[]>([]);
+  const [declarationsLoading, setDeclarationsLoading] = useState(false);
+  const [declarationsError, setDeclarationsError] = useState('');
+
+  useEffect(() => {
+    if (!selectedPokemon) {
+      setDeclarations([]);
+      return;
+    }
+    let alive = true;
+    setDeclarationsLoading(true);
+    setDeclarationsError('');
+    loadPokemonDeclarations(selectedPokemon.id, mode)
+      .then((rows) => {
+        if (alive) setDeclarations(rows);
+      })
+      .catch((loadError: unknown) => {
+        if (alive) {
+          setDeclarations([]);
+          setDeclarationsError(loadError instanceof Error ? loadError.message : t.declarationsLoadError);
+        }
+      })
+      .finally(() => {
+        if (alive) setDeclarationsLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [selectedPokemon, mode, t.declarationsLoadError]);
+
+  useEffect(() => {
+    if (!selectedPokemon) return;
+    const seo = pokemonSeo(selectedPokemon.slug);
+    const description = `${selectedPokemon.name} has ${selectedPokemon.votes.toLocaleString(language)} ${t.fans} on Favmon, ranked #${rank || '-'} across the community Pokédex.`;
+    const canonicalUrl = absoluteLocalizedPokemonUrl(selectedPokemon.slug, 'en');
+    const imageUrl = `${siteBaseUrl}${selectedPokemon.artwork || officialArtworkUrl(selectedPokemon.id)}`;
+    const imageAlt = `${selectedPokemon.name} official Pokémon artwork`;
+    document.title = seo.title;
+    upsertLinkHref('canonical', canonicalUrl);
+    upsertMetaContent('name', 'description', description);
+    upsertMetaContent('property', 'og:url', canonicalUrl);
+    upsertMetaContent('property', 'og:title', seo.socialTitle);
+    upsertMetaContent('property', 'og:description', description);
+    upsertMetaContent('property', 'og:image', imageUrl);
+    upsertMetaContent('property', 'og:image:secure_url', imageUrl);
+    upsertMetaContent('property', 'og:image:alt', imageAlt);
+    upsertMetaContent('name', 'twitter:url', canonicalUrl);
+    upsertMetaContent('name', 'twitter:title', seo.socialTitle);
+    upsertMetaContent('name', 'twitter:description', description);
+    upsertMetaContent('name', 'twitter:image', imageUrl);
+    upsertMetaContent('name', 'twitter:image:alt', imageAlt);
+  }, [language, rank, selectedPokemon, t.fans]);
+
+  if (loading && !selectedPokemon) {
+    return (
+      <section className="page pokemon-detail-page">
+        <div className="detail-loading-card">
+          <div className="spinner" aria-label={t.loading} />
+          <p>{t.loading}</p>
+        </div>
+      </section>
+    );
+  }
+
+  if (!selectedPokemon) {
+    return (
+      <section className="page pokemon-detail-page">
+        <div className="detail-loading-card detail-loading-card--error">
+          <p className="eyebrow">{t.communityPokedex}</p>
+          <h1>{t.pokemonNotFound}</h1>
+          <p className="message warning">
+            {template(t.pokemonNotFoundBody, { pokemon: pokemonDisplayNameFromSlug(pokemonSlug) })}
+          </p>
+          <a className="primary-button detail-page-cta" href={localizedPath('/pokedex', language)}>
+            {t.pokedex}
+          </a>
+        </div>
+      </section>
+    );
+  }
+
+  const declarePath = `${localizedPath('/', language)}?pokemon=${encodeURIComponent(selectedPokemon.slug)}#trainer-terminal`;
+
+  return (
+    <section className="page pokemon-detail-page">
+      <div className="declaration-result-hero pokemon-detail-hero">
+        <div className="pokemon-detail-main-stack">
+          <div className="declaration-result-copy pokemon-detail-copy">
+            <p className="eyebrow">{t.communityPokedex}</p>
+            <h1>{selectedPokemon.name}</h1>
+            <p className="declaration-result-reason">
+              {template(t.pokemonDetailLead, {
+                pokemon: selectedPokemon.name,
+                count: selectedPokemon.votes.toLocaleString(language),
+                fans: t.fans,
+              })}
+            </p>
+            <div className="declaration-result-actions">
+              <a className="primary-button detail-page-cta" href={declarePath}>
+                {t.declare}
+              </a>
+              <a className="secondary-button detail-page-cta" href={localizedPath('/pokedex', language)}>
+                {t.pokedex}
+              </a>
+              <a className="secondary-button detail-page-cta" href={localizedPath('/stats', language)}>
+                {t.viewStats}
+              </a>
+            </div>
+          </div>
+
+          <div className="declaration-result-metrics pokemon-detail-metrics">
+            <article>
+              <span>{t.fans}</span>
+              <strong>{selectedPokemon.votes.toLocaleString(language)}</strong>
+            </article>
+            <article>
+              <span>{t.rank}</span>
+              <strong>{rank ? `#${rank}` : '-'}</strong>
+            </article>
+            <article>
+              <span>{t.pokedexCovered}</span>
+              <strong>{coverage.toFixed(1)}%</strong>
+            </article>
+            <article>
+              <span>{t.declarations}</span>
+              <strong>{totalDeclarations.toLocaleString(language)}</strong>
+            </article>
+          </div>
+
+          <section className="declaration-result-share pokemon-detail-declarations" aria-labelledby="pokemon-detail-latest-heading">
+            <div className="pokemon-detail-section-heading">
+              <h2 id="pokemon-detail-latest-heading">{t.latest}</h2>
+              <a className="secondary-button detail-page-cta" href={declarePath}>
+                {t.declare}
+              </a>
+            </div>
+            {declarationsLoading && <div className="spinner" aria-label={t.loadingDeclarations} />}
+            {declarationsError && <p className="message warning">{declarationsError}</p>}
+            {!declarationsLoading && declarations.length === 0 && <p className="empty-state">{t.noDeclarationsYet}</p>}
+            {declarations.length > 0 && (
+              <div className="declaration-list pokemon-detail-declaration-list">
+                {declarations.map((declaration) => (
+                  <article className="declaration-item" key={declaration.id}>
+                    <strong>{declaration.trainerName}</strong>
+                    <span>{new Date(declaration.createdAt).toLocaleString(language)}</span>
+                    <p>{declaration.reason}</p>
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
+
+        <aside className="declaration-result-card pokemon-detail-card">
+          <span className="declaration-result-date">{selectedPokemon.number}</span>
+          <img
+            className="declaration-result-art pokemon-detail-art"
+            src={selectedPokemon.artwork || officialArtworkUrl(selectedPokemon.id)}
+            alt={`${selectedPokemon.name} official artwork`}
+            width={475}
+            height={475}
+            loading="eager"
+            decoding="async"
+          />
+          <div className="declaration-result-pokemon">
+            <PokemonSprite pokemonId={selectedPokemon.id} name={selectedPokemon.name} />
+            <div>
+              <span>{t.generation}</span>
+              <strong>{selectedPokemon.name}</strong>
+              <small>{selectedPokemon.number} · {selectedPokemon.generationLabel}</small>
+            </div>
+          </div>
+          <div className="declaration-result-types">
+            {selectedPokemon.types.map((type) => (
+              <span className="type-badge" key={type}>
+                <img src={typeIconUrl(type)} alt="" width={17} height={17} loading="lazy" decoding="async" />
+                {t[typeLabelKeys[type]]}
+              </span>
+            ))}
+          </div>
+        </aside>
+      </div>
+
+      {relatedPokemon.length > 0 && (
+        <section className="declaration-result-share pokemon-detail-related" aria-labelledby="pokemon-detail-related-heading">
+          <div className="pokemon-detail-section-heading">
+            <h2 id="pokemon-detail-related-heading">{t.relatedPokemon}</h2>
+          </div>
+          <div className="pokemon-related-grid">
+            {relatedPokemon.map((row) => (
+              <a className="pokemon-related-card" href={localizedPokemonPath(row.slug, language)} key={row.id}>
+                <img src={row.sprite} alt="" width={64} height={64} loading="eager" decoding="async" />
+                <span>{row.number}</span>
+                <strong>{row.name}</strong>
+              </a>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {pokemonAnswerItems.length > 0 && (
+        <section className="seo-faq pokemon-detail-answers" aria-labelledby="pokemon-detail-answers-heading">
+          <div className="seo-faq-heading">
+            <h2 id="pokemon-detail-answers-heading">
+              {template(t.pokemonAnswersHeading, { pokemon: selectedPokemon.name })}
+            </h2>
+          </div>
+          <div className="seo-faq-grid">
+            {pokemonAnswerItems.map((item) => (
+              <article className="seo-faq-item" key={item.question}>
+                <h3>{item.question}</h3>
+                <p>{item.answer}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
+    </section>
   );
 }
 
@@ -4635,6 +5115,14 @@ function PokemonModal({
             </p>
           </div>
         </header>
+        <a
+          className="secondary-button modal-detail-link"
+          href={localizedPokemonPath(pokemon.slug, language)}
+          aria-label={`View ${pokemon.name} Pokemon page`}
+        >
+          <Link2 size={16} aria-hidden="true" />
+          View {pokemon.name}
+        </a>
         <div className="declaration-list">
           {loading && <div className="spinner" aria-label={t.loadingDeclarations} />}
           {error && <p className="message warning">{error}</p>}

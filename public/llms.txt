@@ -12,6 +12,7 @@ Last updated: 2026-06-21
 - A "Who's More Loved?" guessing game based on declaration data.
 - Downloadable social cards in square, story, and X/Twitter banner formats.
 - Multilingual entry points for English, Japanese, Korean, Chinese, Spanish, and French audiences.
+- Canonical Pokémon detail pages at /pokemon/:slug for all 1025 National Dex Pokémon.
 
 ## Important Pages
 
@@ -20,6 +21,8 @@ Last updated: 2026-06-21
 - Explore: https://favmon.com/explore
 - Community Pokédex: https://favmon.com/pokedex
 - Stats: https://favmon.com/stats
+- Pokémon detail page index: https://favmon.com/pokemon-pages.md
+- Example Pokémon page: https://favmon.com/pokemon/pikachu
 - AI answer file: https://favmon.com/answers.md
 - Pricing and access: https://favmon.com/pricing.md
 

@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
@@ -129,6 +129,141 @@ describe('Favorite Pokemon clone', () => {
 
     expect(screen.getByRole('button', { name: /Pikachu.*#025/i })).toBeInTheDocument();
     expect(screen.getByLabelText('Pikachu')).toBeInTheDocument();
+  });
+
+  it('preselects a Pokemon on the declaration form from the URL query', async () => {
+    window.history.replaceState({}, '', '/?pokemon=pikachu');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.startsWith('/api/data')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => backendData,
+          });
+        }
+        return Promise.resolve({
+          ok: true,
+          json: async () => pokemonData,
+        });
+      }),
+    );
+
+    render(<App />);
+
+    expect(await screen.findByRole('heading', { name: /Every Pokémon is/i })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /Pikachu.*#025/i })).toBeInTheDocument();
+    expect(screen.getByLabelText('Pikachu')).toBeInTheDocument();
+  });
+
+  it('renders a Pokemon detail route with stats and declarations', async () => {
+    window.history.replaceState({}, '', '/pokemon/pikachu');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url === '/api/declarations?mode=favourite&pokemonId=25') {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              declarations: backendData.latest,
+            }),
+          });
+        }
+        if (url.startsWith('/api/data')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => backendData,
+          });
+        }
+        return Promise.resolve({
+          ok: true,
+          json: async () => pokemonData,
+        });
+      }),
+    );
+
+    render(<App />);
+
+    expect(await screen.findByRole('heading', { name: 'Pikachu', level: 1 })).toBeInTheDocument();
+    expect(screen.getByText('#025')).toBeInTheDocument();
+    expect(screen.getByText('#1')).toBeInTheDocument();
+    expect(await screen.findByText('This is a real database declaration')).toBeInTheDocument();
+    expect(
+      screen.getAllByRole('link', { name: 'Declare' }).some((link) =>
+        link.getAttribute('href') === '/?pokemon=pikachu#trainer-terminal',
+      ),
+    ).toBe(true);
+  });
+
+  it('canonicalizes numeric Pokemon detail aliases to the slug URL', async () => {
+    window.history.replaceState({}, '', '/pokemon/25');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url === '/api/declarations?mode=favourite&pokemonId=25') {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              declarations: backendData.latest,
+            }),
+          });
+        }
+        if (url.startsWith('/api/data')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => backendData,
+          });
+        }
+        return Promise.resolve({
+          ok: true,
+          json: async () => pokemonData,
+        });
+      }),
+    );
+
+    render(<App />);
+
+    expect(await screen.findByRole('heading', { name: 'Pikachu', level: 1 })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(document.querySelector('link[rel="canonical"]')?.getAttribute('href')).toBe(
+        'https://favmon.com/pokemon/pikachu',
+      );
+    });
+    expect(document.querySelectorAll('link[rel="alternate"][hreflang]').length).toBe(0);
+    expect(document.querySelector('meta[property="og:image"]')?.getAttribute('content')).toBe(
+      'https://favmon.com/pokemon/artwork/25.webp',
+    );
+  });
+
+  it('links from a Pokedex modal to the Pokemon detail page', async () => {
+    window.history.replaceState({}, '', '/pokedex');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.startsWith('/api/data')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => backendData,
+          });
+        }
+        return Promise.resolve({
+          ok: true,
+          json: async () => pokemonData,
+        });
+      }),
+    );
+
+    const user = userEvent.setup();
+    render(<App />);
+
+    expect(await screen.findByRole('heading', { name: /Pokémon discovered/i })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /Pikachu/i }));
+
+    expect(screen.getByRole('link', { name: /View Pikachu/i })).toHaveAttribute('href', '/pokemon/pikachu');
   });
 
   it('renders localized copy from a zh-cn URL prefix', async () => {
