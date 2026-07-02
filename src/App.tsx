@@ -6,6 +6,7 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  Clipboard,
   Coffee,
   Copy,
   Gamepad2,
@@ -14,11 +15,13 @@ import {
   Link2,
   Mail,
   MessageCircle,
+  RefreshCcw,
   Search,
   Send,
   Share2,
   Sparkles,
   Trophy,
+  Upload,
   X,
 } from 'lucide-react';
 import { FormEvent, MouseEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -72,7 +75,7 @@ const localeOptions = [
 ] as const;
 
 type Language = typeof localeOptions[number]['code'];
-type Route = '/' | '/game' | '/explore' | '/pokedex' | '/stats';
+type Route = '/' | '/picker' | '/game' | '/explore' | '/pokedex' | '/stats';
 type AppRoute = Route | '/declaration' | '/pokemon';
 type AppLocation = { route: AppRoute; language: Language; declarationId?: string; pokemonSlug?: string };
 type SortKey = 'number' | 'name' | 'fans';
@@ -94,6 +97,12 @@ const englishRouteSeo: Record<Route, RouteSeo> = {
     socialTitle: `${siteName} | Favmon`,
     description:
       'Declare your favorite or least favorite Pokémon, reveal community Pokédex rankings, and download shareable trainer cards on Favmon.',
+  },
+  '/picker': {
+    title: `Favorite Pokémon Picker Board | Favmon`,
+    socialTitle: `Favorite Pokémon Picker Board | Favmon`,
+    description:
+      'Build a shareable Favmon picker board with favorite Pokémon by generation, type, team slots, shiny preview, and import or export backup codes.',
   },
   '/game': {
     title: `Pokémon Popularity Game | Favmon`,
@@ -128,6 +137,12 @@ const japaneseRouteSeo: Record<Route, RouteSeo> = {
     description:
       'Favmonで好きなポケモンや苦手なポケモンを宣言し、コミュニティ図鑑ランキングと共有用トレーナーカードを楽しめます。',
   },
+  '/picker': {
+    title: 'お気に入りポケモンピッカーボード | Favmon',
+    socialTitle: 'お気に入りポケモンピッカーボード | Favmon',
+    description:
+      'Favmonで世代、タイプ、チーム枠ごとにお気に入りのポケモンを選び、バックアップコードをインポートまたはエクスポートできます。',
+  },
   '/game': {
     title: 'ポケモン人気ゲーム | Favmon',
     socialTitle: 'どちらがより愛されている？ | Favmon',
@@ -160,6 +175,12 @@ const koreanRouteSeo: Record<Route, RouteSeo> = {
     socialTitle: `${siteName} | Favmon`,
     description:
       'Favmon에서 가장 좋아하거나 덜 좋아하는 포켓몬을 선언하고 커뮤니티 도감 순위와 공유용 트레이너 카드를 확인하세요.',
+  },
+  '/picker': {
+    title: '좋아하는 포켓몬 피커 보드 | Favmon',
+    socialTitle: '좋아하는 포켓몬 피커 보드 | Favmon',
+    description:
+      'Favmon에서 세대, 타입, 팀 슬롯별로 좋아하는 포켓몬을 고르고 백업 코드를 가져오거나 내보낼 수 있습니다.',
   },
   '/game': {
     title: '포켓몬 인기 게임 | Favmon',
@@ -194,6 +215,12 @@ const simplifiedChineseRouteSeo: Record<Route, RouteSeo> = {
     description:
       '在 Favmon 宣告你最喜欢或最不喜欢的宝可梦，查看社区图鉴排名，并下载适合分享的训练家卡片。',
   },
+  '/picker': {
+    title: '最喜欢宝可梦选择板 | Favmon',
+    socialTitle: '最喜欢宝可梦选择板 | Favmon',
+    description:
+      '在 Favmon 按世代、属性和队伍槽选择你最喜欢的宝可梦，支持闪光预览、导入和导出备份代码。',
+  },
   '/game': {
     title: '宝可梦人气竞猜游戏 | Favmon',
     socialTitle: '谁更受欢迎？ | Favmon',
@@ -226,6 +253,12 @@ const traditionalChineseRouteSeo: Record<Route, RouteSeo> = {
     socialTitle: `${siteName} | Favmon`,
     description:
       '在 Favmon 宣告你最喜歡或最不喜歡的寶可夢，查看社群圖鑑排名，並下載適合分享的訓練家卡片。',
+  },
+  '/picker': {
+    title: '最喜歡寶可夢選擇板 | Favmon',
+    socialTitle: '最喜歡寶可夢選擇板 | Favmon',
+    description:
+      '在 Favmon 按世代、屬性和隊伍格選擇你最喜歡的寶可夢，支援閃光預覽、匯入和匯出備份代碼。',
   },
   '/game': {
     title: '寶可夢人氣猜謎遊戲 | Favmon',
@@ -260,6 +293,12 @@ const spanishRouteSeo: Record<Route, RouteSeo> = {
     description:
       'Declara tu Pokémon favorito o menos favorito en Favmon, consulta rankings de la Pokédex comunitaria y descarga cartas para compartir.',
   },
+  '/picker': {
+    title: 'Tablero para elegir Pokémon favoritos | Favmon',
+    socialTitle: 'Tablero para elegir Pokémon favoritos | Favmon',
+    description:
+      'Crea un tablero Favmon con Pokémon favoritos por generación, tipo y equipo, con vista shiny y códigos de copia de seguridad.',
+  },
   '/game': {
     title: 'Juego de popularidad Pokémon | Favmon',
     socialTitle: '¿Quién es más querido? | Favmon',
@@ -292,6 +331,12 @@ const frenchRouteSeo: Record<Route, RouteSeo> = {
     socialTitle: `${siteName} | Favmon`,
     description:
       'Déclare ton Pokémon préféré ou le moins aimé sur Favmon, consulte les classements du Pokédex communautaire et télécharge des cartes à partager.',
+  },
+  '/picker': {
+    title: 'Tableau de Pokémon favoris | Favmon',
+    socialTitle: 'Tableau de Pokémon favoris | Favmon',
+    description:
+      'Créez un tableau Favmon avec vos Pokémon favoris par génération, type et équipe, avec aperçu shiny et codes de sauvegarde.',
   },
   '/game': {
     title: 'Jeu de popularité Pokémon | Favmon',
@@ -1746,6 +1791,442 @@ const typeLabelKeys: Record<PokemonType, keyof TranslationMessages> = {
   fairy: 'typeFairy',
 };
 
+type PickerCopy = {
+  nav: string;
+  eyebrow: string;
+  title: string;
+  lead: string;
+  guideTitle: string;
+  stepSlotTitle: string;
+  stepSlotBody: string;
+  stepChooseTitle: string;
+  stepChooseBody: string;
+  stepBackupTitle: string;
+  stepBackupBody: string;
+  shinyPreview: string;
+  slotsFilled: string;
+  teamFilled: string;
+  topType: string;
+  notSet: string;
+  party: string;
+  generations: string;
+  types: string;
+  boardCode: string;
+  boardCodeLead: string;
+  copyCode: string;
+  importCode: string;
+  shareBoard: string;
+  shareTitle: string;
+  shareText: string;
+  shareOpened: string;
+  sharedBoardLoaded: string;
+  resetBoard: string;
+  codePlaceholder: string;
+  copied: string;
+  imported: string;
+  importError: string;
+  emptySlot: string;
+  choose: string;
+  searchCandidates: string;
+  allTypes: string;
+  showingCandidates: string;
+  noCandidates: string;
+  clearSlot: string;
+  overall: string;
+  overallHint: string;
+  teamSlot: string;
+  generationHint: string;
+  typeHint: string;
+};
+
+const pickerCopies: Record<'en' | 'ja' | 'ko' | 'zh-CN' | 'zh-TW' | 'zh-HK' | 'es' | 'fr', PickerCopy> = {
+  en: {
+    nav: 'Picker',
+    eyebrow: 'Favorite picker',
+    title: 'Build your favorite Pokémon board',
+    lead: 'Click a slot, choose a Pokémon, and keep a personal favorites board in this browser.',
+    guideTitle: 'How to use it',
+    stepSlotTitle: 'Click a slot',
+    stepSlotBody: 'Start with All-time favorite, a team slot, a generation, or a type.',
+    stepChooseTitle: 'Choose a Pokémon',
+    stepChooseBody: 'Use search and filters in the popup, then click one Pokémon to fill the slot.',
+    stepBackupTitle: 'Share or copy',
+    stepBackupBody: 'The board saves locally. Share a link or copy the code to move or restore it later.',
+    shinyPreview: 'Shiny preview',
+    slotsFilled: 'Slots filled',
+    teamFilled: 'Team filled',
+    topType: 'Top type',
+    notSet: 'Not set',
+    party: 'Party',
+    generations: 'Generations',
+    types: 'Types',
+    boardCode: 'Board code',
+    boardCodeLead: 'Your board saves in this browser. Share a link for another device, or copy the code for a backup.',
+    copyCode: 'Copy code',
+    importCode: 'Import code',
+    shareBoard: 'Share board',
+    shareTitle: 'My Favmon picker board',
+    shareText: 'Here is my Pokémon favorites board.',
+    shareOpened: 'Share sheet opened.',
+    sharedBoardLoaded: 'Shared board loaded.',
+    resetBoard: 'Reset board',
+    codePlaceholder: 'Paste a Favmon picker code here',
+    copied: 'Copied.',
+    imported: 'Imported.',
+    importError: 'Could not read that picker code.',
+    emptySlot: 'Choose a Pokémon',
+    choose: 'Choose',
+    searchCandidates: 'Search candidates',
+    allTypes: 'All types',
+    showingCandidates: 'Showing {count} of {total}',
+    noCandidates: 'No Pokémon match this filter.',
+    clearSlot: 'Clear slot',
+    overall: 'All-time favorite',
+    overallHint: 'One winner from the full National Dex',
+    teamSlot: 'Team slot',
+    generationHint: 'Pick one favorite from this generation',
+    typeHint: 'Pick one favorite with this type',
+  },
+  ja: {
+    nav: 'Picker',
+    eyebrow: 'お気に入りピッカー',
+    title: 'お気に入りポケモンボードを作る',
+    lead: '枠をクリックし、ポケモンを選び、このブラウザに自分だけのお気に入りボードを保存できます。',
+    guideTitle: '使い方',
+    stepSlotTitle: '枠をクリック',
+    stepSlotBody: 'いちばん好き、チーム枠、世代、タイプのどれからでも始められます。',
+    stepChooseTitle: 'ポケモンを選ぶ',
+    stepChooseBody: 'ポップアップで検索や絞り込みを使い、1匹をクリックすると枠が埋まります。',
+    stepBackupTitle: '共有またはコピー',
+    stepBackupBody: 'ボードはローカル保存されます。リンク共有やコードコピーで移行・復元できます。',
+    shinyPreview: '色違いプレビュー',
+    slotsFilled: '入力済み枠',
+    teamFilled: 'チーム枠',
+    topType: '最多タイプ',
+    notSet: '未設定',
+    party: 'チーム',
+    generations: '世代',
+    types: 'タイプ',
+    boardCode: 'ボードコード',
+    boardCodeLead: 'ボードはこのブラウザに保存されます。別端末にはリンク共有、バックアップにはコードコピーを使えます。',
+    copyCode: 'コードをコピー',
+    importCode: 'コードを読み込む',
+    shareBoard: 'ボードを共有',
+    shareTitle: 'Favmon picker ボード',
+    shareText: '私のポケモンお気に入りボードです。',
+    shareOpened: '共有を開きました。',
+    sharedBoardLoaded: '共有ボードを読み込みました。',
+    resetBoard: 'リセット',
+    codePlaceholder: 'Favmon picker code を貼り付け',
+    copied: 'コピーしました。',
+    imported: '読み込みました。',
+    importError: 'この picker code は読み込めません。',
+    emptySlot: 'ポケモンを選ぶ',
+    choose: '選ぶ',
+    searchCandidates: '候補を検索',
+    allTypes: 'すべてのタイプ',
+    showingCandidates: '{total} 件中 {count} 件を表示',
+    noCandidates: '条件に合うポケモンがいません。',
+    clearSlot: '枠を空にする',
+    overall: 'いちばん好き',
+    overallHint: '全国図鑑から1匹だけ選ぶ',
+    teamSlot: 'チーム枠',
+    generationHint: 'この世代から1匹選ぶ',
+    typeHint: 'このタイプから1匹選ぶ',
+  },
+  ko: {
+    nav: 'Picker',
+    eyebrow: '좋아하는 포켓몬 피커',
+    title: '좋아하는 포켓몬 보드 만들기',
+    lead: '칸을 클릭하고 포켓몬을 고르면 이 브라우저에 나만의 즐겨찾기 보드가 저장됩니다.',
+    guideTitle: '사용 방법',
+    stepSlotTitle: '칸 클릭',
+    stepSlotBody: '최애 포켓몬, 팀 슬롯, 세대, 타입 중 아무 칸에서 시작하세요.',
+    stepChooseTitle: '포켓몬 선택',
+    stepChooseBody: '팝업에서 검색과 필터를 사용한 뒤 포켓몬 하나를 클릭하면 칸이 채워집니다.',
+    stepBackupTitle: '공유 또는 복사',
+    stepBackupBody: '보드는 로컬에 저장됩니다. 링크를 공유하거나 코드를 복사해 이동 또는 복원하세요.',
+    shinyPreview: '이로치 미리보기',
+    slotsFilled: '채운 칸',
+    teamFilled: '팀 칸',
+    topType: '최다 타입',
+    notSet: '없음',
+    party: '팀',
+    generations: '세대',
+    types: '타입',
+    boardCode: '보드 코드',
+    boardCodeLead: '보드는 이 브라우저에 저장됩니다. 다른 기기에는 링크를 공유하고, 백업에는 코드를 복사하세요.',
+    copyCode: '코드 복사',
+    importCode: '코드 가져오기',
+    shareBoard: '보드 공유',
+    shareTitle: '내 Favmon picker 보드',
+    shareText: '내 포켓몬 즐겨찾기 보드입니다.',
+    shareOpened: '공유 창을 열었습니다.',
+    sharedBoardLoaded: '공유 보드를 불러왔습니다.',
+    resetBoard: '보드 초기화',
+    codePlaceholder: 'Favmon picker code 붙여넣기',
+    copied: '복사했습니다.',
+    imported: '가져왔습니다.',
+    importError: '이 picker code 를 읽을 수 없습니다.',
+    emptySlot: '포켓몬 선택',
+    choose: '선택',
+    searchCandidates: '후보 검색',
+    allTypes: '모든 타입',
+    showingCandidates: '{total}개 중 {count}개 표시',
+    noCandidates: '조건에 맞는 포켓몬이 없습니다.',
+    clearSlot: '칸 비우기',
+    overall: '최애 포켓몬',
+    overallHint: '전국도감 전체에서 한 마리 선택',
+    teamSlot: '팀 슬롯',
+    generationHint: '이 세대에서 한 마리 선택',
+    typeHint: '이 타입에서 한 마리 선택',
+  },
+  'zh-CN': {
+    nav: '选择板',
+    eyebrow: '最喜欢选择器',
+    title: '制作你的宝可梦偏好选择板',
+    lead: '点一个格子，选一只宝可梦，这个浏览器就会保存你的个人偏好表。',
+    guideTitle: '怎么玩',
+    stepSlotTitle: '先点一个格子',
+    stepSlotBody: '可以从总冠军、队伍槽、某个世代，或者某个属性开始。',
+    stepChooseTitle: '再选宝可梦',
+    stepChooseBody: '弹窗里可以搜索，也可以按世代和属性筛选。点中一只就会填进格子。',
+    stepBackupTitle: '最后分享或复制',
+    stepBackupBody: '选择板会本地保存。分享链接可以直接给别人看，复制代码可用于备份和恢复。',
+    shinyPreview: '闪光预览',
+    slotsFilled: '已填写槽位',
+    teamFilled: '队伍槽',
+    topType: '最多属性',
+    notSet: '未设置',
+    party: '队伍',
+    generations: '世代',
+    types: '属性',
+    boardCode: '选择板代码',
+    boardCodeLead: '选择板会保存在这个浏览器里。要发给别人就分享链接，要备份或迁移就复制代码。',
+    copyCode: '复制代码',
+    importCode: '导入代码',
+    shareBoard: '分享选择板',
+    shareTitle: '我的 Favmon 选择板',
+    shareText: '这是我的宝可梦偏好选择板。',
+    shareOpened: '已打开分享面板。',
+    sharedBoardLoaded: '已载入分享选择板。',
+    resetBoard: '重置选择板',
+    codePlaceholder: '把 Favmon picker code 粘贴到这里',
+    copied: '已复制。',
+    imported: '已导入。',
+    importError: '无法读取这段 picker code。',
+    emptySlot: '选择一只宝可梦',
+    choose: '选择',
+    searchCandidates: '搜索候选',
+    allTypes: '全部属性',
+    showingCandidates: '显示 {count} / {total}',
+    noCandidates: '没有符合条件的宝可梦。',
+    clearSlot: '清空槽位',
+    overall: '总冠军',
+    overallHint: '从全国图鉴里选唯一赢家',
+    teamSlot: '队伍槽',
+    generationHint: '从这个世代选一只最喜欢的',
+    typeHint: '从这个属性选一只最喜欢的',
+  },
+  'zh-TW': {
+    nav: '選擇板',
+    eyebrow: '最喜歡選擇器',
+    title: '製作你的寶可夢偏好選擇板',
+    lead: '點一個格子，選一隻寶可夢，這個瀏覽器就會保存你的個人偏好表。',
+    guideTitle: '怎麼玩',
+    stepSlotTitle: '先點一個格子',
+    stepSlotBody: '可以從總冠軍、隊伍格、某個世代，或某個屬性開始。',
+    stepChooseTitle: '再選寶可夢',
+    stepChooseBody: '彈窗裡可以搜尋，也可以按世代和屬性篩選。點中一隻就會填進格子。',
+    stepBackupTitle: '最後分享或複製',
+    stepBackupBody: '選擇板會本地保存。分享連結可以直接給別人看，複製代碼可用於備份和恢復。',
+    shinyPreview: '閃光預覽',
+    slotsFilled: '已填寫格位',
+    teamFilled: '隊伍格',
+    topType: '最多屬性',
+    notSet: '未設定',
+    party: '隊伍',
+    generations: '世代',
+    types: '屬性',
+    boardCode: '選擇板代碼',
+    boardCodeLead: '選擇板會保存在這個瀏覽器裡。要發給別人就分享連結，要備份或移轉就複製代碼。',
+    copyCode: '複製代碼',
+    importCode: '匯入代碼',
+    shareBoard: '分享選擇板',
+    shareTitle: '我的 Favmon 選擇板',
+    shareText: '這是我的寶可夢偏好選擇板。',
+    shareOpened: '已開啟分享面板。',
+    sharedBoardLoaded: '已載入分享選擇板。',
+    resetBoard: '重設選擇板',
+    codePlaceholder: '把 Favmon picker code 貼到這裡',
+    copied: '已複製。',
+    imported: '已匯入。',
+    importError: '無法讀取這段 picker code。',
+    emptySlot: '選擇一隻寶可夢',
+    choose: '選擇',
+    searchCandidates: '搜尋候選',
+    allTypes: '全部屬性',
+    showingCandidates: '顯示 {count} / {total}',
+    noCandidates: '沒有符合條件的寶可夢。',
+    clearSlot: '清空格位',
+    overall: '總冠軍',
+    overallHint: '從全國圖鑑裡選唯一贏家',
+    teamSlot: '隊伍格',
+    generationHint: '從這個世代選一隻最喜歡的',
+    typeHint: '從這個屬性選一隻最喜歡的',
+  },
+  'zh-HK': {
+    nav: '選擇板',
+    eyebrow: '最鍾意選擇器',
+    title: '整你嘅寶可夢偏好選擇板',
+    lead: '點一個格，揀一隻寶可夢，呢個瀏覽器就會保存你嘅個人偏好表。',
+    guideTitle: '點玩',
+    stepSlotTitle: '先點一個格',
+    stepSlotBody: '可以由總冠軍、隊伍格、某個世代，或者某個屬性開始。',
+    stepChooseTitle: '再揀寶可夢',
+    stepChooseBody: '彈窗入面可以搜尋，亦可以按世代同屬性篩選。點中一隻就會填入格。',
+    stepBackupTitle: '最後分享或複製',
+    stepBackupBody: '選擇板會本地保存。分享連結可以直接畀人睇，複製代碼可以備份同恢復。',
+    shinyPreview: '閃光預覽',
+    slotsFilled: '已填格位',
+    teamFilled: '隊伍格',
+    topType: '最多屬性',
+    notSet: '未設定',
+    party: '隊伍',
+    generations: '世代',
+    types: '屬性',
+    boardCode: '選擇板代碼',
+    boardCodeLead: '選擇板會存在呢個瀏覽器。要畀人睇就分享連結，要備份或者搬機就複製代碼。',
+    copyCode: '複製代碼',
+    importCode: '匯入代碼',
+    shareBoard: '分享選擇板',
+    shareTitle: '我嘅 Favmon 選擇板',
+    shareText: '呢個係我嘅寶可夢偏好選擇板。',
+    shareOpened: '已開啟分享面板。',
+    sharedBoardLoaded: '已載入分享選擇板。',
+    resetBoard: '重設選擇板',
+    codePlaceholder: '將 Favmon picker code 貼喺呢度',
+    copied: '已複製。',
+    imported: '已匯入。',
+    importError: '讀唔到呢段 picker code。',
+    emptySlot: '揀一隻寶可夢',
+    choose: '選擇',
+    searchCandidates: '搜尋候選',
+    allTypes: '全部屬性',
+    showingCandidates: '顯示 {count} / {total}',
+    noCandidates: '冇符合條件嘅寶可夢。',
+    clearSlot: '清空格位',
+    overall: '總冠軍',
+    overallHint: '由全國圖鑑揀唯一贏家',
+    teamSlot: '隊伍格',
+    generationHint: '由呢個世代揀一隻最鍾意',
+    typeHint: '由呢個屬性揀一隻最鍾意',
+  },
+  es: {
+    nav: 'Picker',
+    eyebrow: 'Selector de favoritos',
+    title: 'Crea tu tablero de Pokémon favoritos',
+    lead: 'Haz clic en una casilla, elige un Pokémon y guarda tu tablero personal en este navegador.',
+    guideTitle: 'Cómo se usa',
+    stepSlotTitle: 'Haz clic en una casilla',
+    stepSlotBody: 'Empieza por favorito total, equipo, generación o tipo.',
+    stepChooseTitle: 'Elige un Pokémon',
+    stepChooseBody: 'Usa búsqueda y filtros en la ventana, luego haz clic en un Pokémon para llenar la casilla.',
+    stepBackupTitle: 'Comparte o copia',
+    stepBackupBody: 'El tablero se guarda localmente. Comparte un enlace o copia el código para moverlo o restaurarlo después.',
+    shinyPreview: 'Vista shiny',
+    slotsFilled: 'Casillas llenas',
+    teamFilled: 'Equipo lleno',
+    topType: 'Tipo principal',
+    notSet: 'Sin elegir',
+    party: 'Equipo',
+    generations: 'Generaciones',
+    types: 'Tipos',
+    boardCode: 'Código del tablero',
+    boardCodeLead: 'Tu tablero se guarda en este navegador. Comparte un enlace para otro dispositivo o copia el código como respaldo.',
+    copyCode: 'Copiar código',
+    importCode: 'Importar código',
+    shareBoard: 'Compartir tablero',
+    shareTitle: 'Mi tablero Favmon picker',
+    shareText: 'Este es mi tablero de Pokémon favoritos.',
+    shareOpened: 'Se abrió el panel de compartir.',
+    sharedBoardLoaded: 'Tablero compartido cargado.',
+    resetBoard: 'Reiniciar tablero',
+    codePlaceholder: 'Pega un Favmon picker code aquí',
+    copied: 'Copiado.',
+    imported: 'Importado.',
+    importError: 'No se pudo leer ese picker code.',
+    emptySlot: 'Elige un Pokémon',
+    choose: 'Elegir',
+    searchCandidates: 'Buscar candidatos',
+    allTypes: 'Todos los tipos',
+    showingCandidates: 'Mostrando {count} de {total}',
+    noCandidates: 'Ningún Pokémon coincide con este filtro.',
+    clearSlot: 'Vaciar casilla',
+    overall: 'Favorito total',
+    overallHint: 'Un ganador de toda la Dex Nacional',
+    teamSlot: 'Puesto del equipo',
+    generationHint: 'Elige un favorito de esta generación',
+    typeHint: 'Elige un favorito con este tipo',
+  },
+  fr: {
+    nav: 'Picker',
+    eyebrow: 'Sélecteur de favoris',
+    title: 'Créez votre tableau de Pokémon favoris',
+    lead: 'Cliquez sur une case, choisissez un Pokémon et gardez votre tableau personnel dans ce navigateur.',
+    guideTitle: 'Comment jouer',
+    stepSlotTitle: 'Cliquez sur une case',
+    stepSlotBody: 'Commencez par favori absolu, équipe, génération ou type.',
+    stepChooseTitle: 'Choisissez un Pokémon',
+    stepChooseBody: 'Utilisez la recherche et les filtres, puis cliquez sur un Pokémon pour remplir la case.',
+    stepBackupTitle: 'Partagez ou copiez',
+    stepBackupBody: 'Le tableau est enregistré localement. Partagez un lien ou copiez le code pour le déplacer ou le restaurer.',
+    shinyPreview: 'Aperçu shiny',
+    slotsFilled: 'Cases remplies',
+    teamFilled: 'Équipe remplie',
+    topType: 'Type principal',
+    notSet: 'Non choisi',
+    party: 'Équipe',
+    generations: 'Générations',
+    types: 'Types',
+    boardCode: 'Code du tableau',
+    boardCodeLead: 'Votre tableau est enregistré dans ce navigateur. Partagez un lien pour un autre appareil ou copiez le code en sauvegarde.',
+    copyCode: 'Copier le code',
+    importCode: 'Importer le code',
+    shareBoard: 'Partager le tableau',
+    shareTitle: 'Mon tableau Favmon picker',
+    shareText: 'Voici mon tableau de Pokémon favoris.',
+    shareOpened: 'Panneau de partage ouvert.',
+    sharedBoardLoaded: 'Tableau partagé chargé.',
+    resetBoard: 'Réinitialiser',
+    codePlaceholder: 'Collez un Favmon picker code ici',
+    copied: 'Copié.',
+    imported: 'Importé.',
+    importError: 'Impossible de lire ce picker code.',
+    emptySlot: 'Choisir un Pokémon',
+    choose: 'Choisir',
+    searchCandidates: 'Rechercher',
+    allTypes: 'Tous les types',
+    showingCandidates: '{count} sur {total}',
+    noCandidates: 'Aucun Pokémon ne correspond à ce filtre.',
+    clearSlot: 'Vider la case',
+    overall: 'Favori absolu',
+    overallHint: 'Un gagnant dans toute la Dex Nationale',
+    teamSlot: 'Case équipe',
+    generationHint: 'Choisir un favori de cette génération',
+    typeHint: 'Choisir un favori avec ce type',
+  },
+};
+
+const pickerTypeOrder = Object.keys(typeLabelKeys) as PokemonType[];
+const pickerStorageKey = 'favmon_picker_board_v1';
+const pickerCandidateLimit = 96;
+
+function pickerCopyFor(language: Language): PickerCopy {
+  if (language === 'es-CL' || language === 'es-PR' || language === 'es-CR') return pickerCopies.es;
+  return pickerCopies[language] ?? pickerCopies.en;
+}
+
 function copyFor(language: Language, mode: Mode): TranslationMessages {
   return {
     ...translations[language],
@@ -2882,6 +3363,7 @@ export default function App() {
   const [languageMenuOpen, setLanguageMenuOpen] = useState(false);
   const languageMenuRef = useRef<HTMLDivElement | null>(null);
   const t = useMemo(() => copyFor(language, mode), [language, mode]);
+  const pickerCopy = useMemo(() => pickerCopyFor(language), [language]);
   const loading = pokemonLoading;
 
   useEffect(() => {
@@ -3087,6 +3569,9 @@ export default function App() {
         <NavLink route="/" activeRoute={route} language={language} onNavigate={navigate}>
           {t.declare}
         </NavLink>
+        <NavLink route="/picker" activeRoute={route} language={language} onNavigate={navigate}>
+          {pickerCopy.nav}
+        </NavLink>
         <NavLink route="/game" activeRoute={route} language={language} onNavigate={navigate}>
           {t.game}
         </NavLink>
@@ -3186,6 +3671,7 @@ export default function App() {
             onSubmitted={handleDeclarationSubmitted}
           />
         )}
+        {route === '/picker' && <PickerPage pokemon={displayPokemon} loading={loading} language={language} t={t} />}
         {route === '/game' && <GamePage pokemon={displayPokemon} mode={mode} language={language} t={t} />}
         {route === '/explore' && <ExplorePage declarations={declarations} language={language} t={t} />}
         {route === '/pokedex' && (
@@ -4397,6 +4883,631 @@ function ExplorePage({
   );
 }
 
+type PickerSlot = {
+  id: string;
+  group: 'featured' | 'team' | 'generation' | 'type';
+  kind: 'overall' | 'team' | 'generation' | 'type';
+  label: string;
+  shortLabel: string;
+  hint: string;
+  generation?: GenerationKey;
+  type?: PokemonType;
+};
+
+type PickerStoredBoard = {
+  picks: Record<string, number>;
+  shiny: boolean;
+};
+
+function buildPickerSlots(copy: PickerCopy, t: TranslationMessages): PickerSlot[] {
+  const featured: PickerSlot = {
+    id: 'overall',
+    group: 'featured',
+    kind: 'overall',
+    label: copy.overall,
+    shortLabel: '★',
+    hint: copy.overallHint,
+  };
+  const teamSlots: PickerSlot[] = Array.from({ length: 6 }, (_, index) => ({
+    id: `team-${index + 1}`,
+    group: 'team',
+    kind: 'team',
+    label: `${copy.teamSlot} ${index + 1}`,
+    shortLabel: String(index + 1),
+    hint: copy.emptySlot,
+  }));
+  const generationSlots: PickerSlot[] = allGenerations().map((item) => ({
+    id: `generation-${item.key}`,
+    group: 'generation',
+    kind: 'generation',
+    label: item.label,
+    shortLabel: item.label.replace('Gen ', ''),
+    hint: copy.generationHint,
+    generation: item.key,
+  }));
+  const typeSlots: PickerSlot[] = pickerTypeOrder.map((type) => ({
+    id: `type-${type}`,
+    group: 'type',
+    kind: 'type',
+    label: t[typeLabelKeys[type]],
+    shortLabel: t[typeLabelKeys[type]].slice(0, 3),
+    hint: copy.typeHint,
+    type,
+  }));
+  return [featured, ...teamSlots, ...generationSlots, ...typeSlots];
+}
+
+function normalizePickerPickMap(
+  value: unknown,
+  allowedIds?: Set<number>,
+  allowedSlots?: Set<string>,
+): Record<string, number> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  const next: Record<string, number> = {};
+  for (const [key, rawValue] of Object.entries(value as Record<string, unknown>)) {
+    const id = typeof rawValue === 'number' ? rawValue : Number(rawValue);
+    if (!Number.isInteger(id) || id < 1) continue;
+    if (allowedSlots && !allowedSlots.has(key)) continue;
+    if (allowedIds && !allowedIds.has(id)) continue;
+    next[key] = id;
+  }
+  return next;
+}
+
+function encodeBase64Url(value: string): string {
+  const bytes = new TextEncoder().encode(value);
+  let binary = '';
+  bytes.forEach((byte) => {
+    binary += String.fromCharCode(byte);
+  });
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/u, '');
+}
+
+function decodeBase64Url(value: string): string {
+  const normalized = value.trim().replace(/-/g, '+').replace(/_/g, '/');
+  const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+  const binary = atob(padded);
+  const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
+}
+
+function encodePickerBoard(board: PickerStoredBoard): string {
+  return encodeBase64Url(JSON.stringify({ version: 1, ...board }));
+}
+
+function pickerBoardParamFromInput(input: string): string | null {
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+
+  try {
+    const url = new URL(trimmed, window.location.origin);
+    const board = url.searchParams.get('board');
+    if (board) return board;
+  } catch {
+    // Keep parsing below for pasted query strings.
+  }
+
+  const queryStart = trimmed.indexOf('?');
+  const query = queryStart >= 0 ? trimmed.slice(queryStart + 1) : trimmed.startsWith('?') ? trimmed.slice(1) : trimmed;
+  if (!query.includes('board=')) return null;
+  return new URLSearchParams(query).get('board');
+}
+
+function decodePickerBoardCode(code: string): unknown {
+  const trimmed = code.trim();
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    return JSON.parse(decodeBase64Url(trimmed));
+  }
+}
+
+function parsePickerBoardInput(input: string): unknown {
+  return decodePickerBoardCode(pickerBoardParamFromInput(input) ?? input);
+}
+
+function readPickerStoredBoard(): PickerStoredBoard {
+  try {
+    const raw = localStorage.getItem(pickerStorageKey);
+    if (!raw) return { picks: {}, shiny: false };
+    const parsed = JSON.parse(raw) as { picks?: unknown; shiny?: unknown };
+    return {
+      picks: normalizePickerPickMap(parsed.picks),
+      shiny: parsed.shiny === true,
+    };
+  } catch {
+    return { picks: {}, shiny: false };
+  }
+}
+
+function shinySpriteUrl(pokemonId: number): string {
+  return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/shiny/${pokemonId}.png`;
+}
+
+function pickerPokemonSpriteUrl(pokemonId: number, shiny: boolean): string {
+  return shiny ? shinySpriteUrl(pokemonId) : pokemonSpriteUrl(pokemonId);
+}
+
+function candidatesForPickerSlot(slot: PickerSlot, pokemon: PokemonRow[]): PokemonRow[] {
+  if (slot.kind === 'generation' && slot.generation) {
+    return pokemon.filter((row) => row.generation === slot.generation);
+  }
+  if (slot.kind === 'type' && slot.type) {
+    const slotType = slot.type;
+    return pokemon.filter((row) => row.types.includes(slotType));
+  }
+  return pokemon;
+}
+
+function PickerPage({
+  pokemon,
+  loading,
+  language,
+  t,
+}: {
+  pokemon: PokemonRow[];
+  loading: boolean;
+  language: Language;
+  t: TranslationMessages;
+}) {
+  const copy = useMemo(() => pickerCopyFor(language), [language]);
+  const slots = useMemo(() => buildPickerSlots(copy, t), [copy, t]);
+  const pokemonById = useMemo(() => new Map(pokemon.map((row) => [row.id, row])), [pokemon]);
+  const pokemonIds = useMemo(() => new Set(pokemon.map((row) => row.id)), [pokemon]);
+  const slotIds = useMemo(() => new Set(slots.map((slot) => slot.id)), [slots]);
+  const [picks, setPicks] = useState<Record<string, number>>(() => readPickerStoredBoard().picks);
+  const [shiny, setShiny] = useState(() => readPickerStoredBoard().shiny);
+  const [activeSlotId, setActiveSlotId] = useState<string | null>(null);
+  const [candidateQuery, setCandidateQuery] = useState('');
+  const [candidateGeneration, setCandidateGeneration] = useState<'all' | GenerationKey>('all');
+  const [candidateType, setCandidateType] = useState<'all' | PokemonType>('all');
+  const [importCode, setImportCode] = useState('');
+  const [statusMessage, setStatusMessage] = useState('');
+  const shareImportHandledRef = useRef(false);
+  const activeSlot = slots.find((slot) => slot.id === activeSlotId) ?? null;
+  const featuredSlot = slots.find((slot) => slot.group === 'featured')!;
+  const teamSlots = slots.filter((slot) => slot.group === 'team');
+  const generationSlots = slots.filter((slot) => slot.group === 'generation');
+  const typeSlots = slots.filter((slot) => slot.group === 'type');
+  const flashStatus = useCallback((message: string) => {
+    setStatusMessage(message);
+    window.setTimeout(() => setStatusMessage(''), 1800);
+  }, []);
+  const shareUrl = useMemo(() => {
+    const url = new URL(localizedPath('/picker', language), window.location.origin);
+    url.searchParams.set('board', encodePickerBoard({ picks, shiny }));
+    return url.toString();
+  }, [language, picks, shiny]);
+
+  useEffect(() => {
+    localStorage.setItem(pickerStorageKey, JSON.stringify({ version: 1, picks, shiny }));
+  }, [picks, shiny]);
+
+  useEffect(() => {
+    if (shareImportHandledRef.current || pokemonIds.size === 0 || slotIds.size === 0) return;
+    const boardCode = pickerBoardParamFromInput(window.location.search);
+    shareImportHandledRef.current = true;
+    if (!boardCode) return;
+
+    try {
+      const parsed = decodePickerBoardCode(boardCode);
+      const source = parsed && typeof parsed === 'object' && 'picks' in parsed ? parsed.picks : parsed;
+      const nextPicks = normalizePickerPickMap(source, pokemonIds, slotIds);
+      if (Object.keys(nextPicks).length === 0) throw new Error('No valid picks');
+      setPicks(nextPicks);
+      if (parsed && typeof parsed === 'object' && 'shiny' in parsed) {
+        setShiny(parsed.shiny === true);
+      }
+      flashStatus(copy.sharedBoardLoaded);
+    } catch {
+      flashStatus(copy.importError);
+    }
+  }, [copy.importError, copy.sharedBoardLoaded, flashStatus, pokemonIds, slotIds]);
+
+  useEffect(() => {
+    if (!activeSlotId) return undefined;
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') setActiveSlotId(null);
+    }
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [activeSlotId]);
+
+  useEffect(() => {
+    setCandidateQuery('');
+    setCandidateGeneration('all');
+    setCandidateType('all');
+  }, [activeSlotId]);
+
+  const selectedRows = useMemo(
+    () => Object.values(picks)
+      .map((id) => pokemonById.get(id))
+      .filter((row): row is PokemonRow => Boolean(row)),
+    [picks, pokemonById],
+  );
+  const filledSlots = slots.filter((slot) => picks[slot.id] && pokemonById.has(picks[slot.id])).length;
+  const teamFilled = teamSlots.filter((slot) => picks[slot.id] && pokemonById.has(picks[slot.id])).length;
+  const canShareBoard = filledSlots > 0;
+  const topType = useMemo(() => {
+    const counts = new Map<PokemonType, number>();
+    for (const row of selectedRows) {
+      for (const type of row.types) {
+        counts.set(type, (counts.get(type) ?? 0) + 1);
+      }
+    }
+    return [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+  }, [selectedRows]);
+  const exportCode = useMemo(() => JSON.stringify({ version: 1, shiny, picks }, null, 2), [picks, shiny]);
+  const baseCandidates = useMemo(
+    () => (activeSlot ? candidatesForPickerSlot(activeSlot, pokemon) : []),
+    [activeSlot, pokemon],
+  );
+  const filteredCandidates = useMemo(() => {
+    const normalized = candidateQuery.trim().toLowerCase();
+    return baseCandidates.filter((row) => {
+      if (candidateGeneration !== 'all' && row.generation !== candidateGeneration) return false;
+      if (candidateType !== 'all' && !row.types.includes(candidateType)) return false;
+      if (!normalized) return true;
+      return row.name.toLowerCase().includes(normalized) || String(row.id).includes(normalized);
+    });
+  }, [baseCandidates, candidateGeneration, candidateQuery, candidateType]);
+  const visibleCandidates = filteredCandidates.slice(0, pickerCandidateLimit);
+
+  function choosePokemon(slot: PickerSlot, row: PokemonRow) {
+    setPicks((current) => ({ ...current, [slot.id]: row.id }));
+    setActiveSlotId(null);
+  }
+
+  function clearSlot(slot: PickerSlot) {
+    setPicks((current) => {
+      const next = { ...current };
+      delete next[slot.id];
+      return next;
+    });
+  }
+
+  async function copyBoardCode() {
+    setImportCode(exportCode);
+    try {
+      await copyTextToClipboard(exportCode);
+      flashStatus(copy.copied);
+    } catch {
+      flashStatus(copy.copied);
+    }
+  }
+
+  async function shareBoard() {
+    if (!canShareBoard) return;
+    setImportCode(shareUrl);
+    const sharePayload = {
+      title: copy.shareTitle,
+      text: copy.shareText,
+      url: shareUrl,
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(sharePayload);
+        flashStatus(copy.shareOpened);
+        return;
+      }
+
+      await copyTextToClipboard(shareUrl);
+      flashStatus(copy.copied);
+    } catch (shareError) {
+      if (shareError instanceof DOMException && shareError.name === 'AbortError') return;
+      try {
+        await copyTextToClipboard(shareUrl);
+      } catch {
+        setImportCode(shareUrl);
+      }
+      flashStatus(copy.copied);
+    }
+  }
+
+  function importBoardCode() {
+    try {
+      const parsed = parsePickerBoardInput(importCode) as { picks?: unknown; shiny?: unknown };
+      const source = parsed && typeof parsed === 'object' && 'picks' in parsed ? parsed.picks : parsed;
+      const nextPicks = normalizePickerPickMap(source, pokemonIds, slotIds);
+      if (Object.keys(nextPicks).length === 0) throw new Error('No valid picks');
+      setPicks(nextPicks);
+      if (parsed && typeof parsed === 'object' && 'shiny' in parsed) {
+        setShiny(parsed.shiny === true);
+      }
+      flashStatus(copy.imported);
+    } catch {
+      flashStatus(copy.importError);
+    }
+  }
+
+  function resetBoard() {
+    setPicks({});
+    setImportCode('');
+    setStatusMessage('');
+  }
+
+  function renderSlot(slot: PickerSlot, className = '') {
+    const selected = pokemonById.get(picks[slot.id]);
+    return (
+      <button
+        type="button"
+        className={`picker-slot ${selected ? 'is-filled' : ''} ${className}`}
+        onClick={() => setActiveSlotId(slot.id)}
+        aria-label={`${copy.choose} ${slot.label}`}
+      >
+        <span className="picker-slot-kicker">{slot.shortLabel}</span>
+        <span className="picker-slot-art" aria-hidden="true">
+          {selected ? (
+            <img
+              src={pickerPokemonSpriteUrl(selected.id, shiny)}
+              alt=""
+              width={96}
+              height={96}
+              loading="lazy"
+              decoding="async"
+            />
+          ) : (
+            <Heart size={30} />
+          )}
+        </span>
+        <strong>{slot.label}</strong>
+        <span>{selected ? `${selected.name} ${selected.number}` : copy.emptySlot}</span>
+      </button>
+    );
+  }
+
+  return (
+    <section className="page picker-page">
+      <section className="picker-hero">
+        <div className="picker-hero-copy">
+          <p className="eyebrow">{copy.eyebrow}</p>
+          <h1>{copy.title}</h1>
+          <p>{copy.lead}</p>
+          <div className="picker-actions">
+            <button type="button" className="primary-button" onClick={() => void shareBoard()} disabled={!canShareBoard}>
+              <Share2 size={17} />
+              {copy.shareBoard}
+            </button>
+            <button type="button" className={`secondary-button picker-shiny-toggle${shiny ? ' active' : ''}`} onClick={() => setShiny((value) => !value)}>
+              <Sparkles size={17} />
+              {copy.shinyPreview}
+            </button>
+            <button type="button" className="secondary-button" onClick={copyBoardCode}>
+              <Clipboard size={17} />
+              {copy.copyCode}
+            </button>
+          </div>
+        </div>
+        <aside className="picker-hero-panel" aria-label={copy.party}>
+          <div className="picker-hero-party">
+            {teamSlots.map((slot) => {
+              const selected = pokemonById.get(picks[slot.id]);
+              return (
+                <button
+                  type="button"
+                  className={selected ? 'is-filled' : ''}
+                  key={slot.id}
+                  onClick={() => setActiveSlotId(slot.id)}
+                  aria-label={`${copy.choose} ${slot.label}`}
+                >
+                  {selected ? (
+                    <img
+                      src={pickerPokemonSpriteUrl(selected.id, shiny)}
+                      alt=""
+                      width={96}
+                      height={96}
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  ) : (
+                    <span>{slot.shortLabel}</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          <dl className="picker-metrics">
+            <div>
+              <dt>{copy.slotsFilled}</dt>
+              <dd>{filledSlots} / {slots.length}</dd>
+            </div>
+            <div>
+              <dt>{copy.teamFilled}</dt>
+              <dd>{teamFilled} / {teamSlots.length}</dd>
+            </div>
+            <div>
+              <dt>{copy.topType}</dt>
+              <dd>{topType ? t[typeLabelKeys[topType]] : copy.notSet}</dd>
+            </div>
+          </dl>
+        </aside>
+      </section>
+
+      <section className="picker-guide" aria-labelledby="picker-guide-title">
+        <h2 id="picker-guide-title">{copy.guideTitle}</h2>
+        <div className="picker-guide-grid">
+          {[
+            { number: '1', title: copy.stepSlotTitle, body: copy.stepSlotBody },
+            { number: '2', title: copy.stepChooseTitle, body: copy.stepChooseBody },
+            { number: '3', title: copy.stepBackupTitle, body: copy.stepBackupBody },
+          ].map((step) => (
+            <article className="picker-guide-card" key={step.number}>
+              <span>{step.number}</span>
+              <strong>{step.title}</strong>
+              <p>{step.body}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section className="picker-featured-grid">
+        {renderSlot(featuredSlot, 'picker-slot--featured')}
+      </section>
+
+      <section className="picker-section">
+        <div className="picker-section-heading">
+          <h2>{copy.party}</h2>
+          <p>{copy.overallHint}</p>
+        </div>
+        <div className="picker-team-grid">
+          {teamSlots.map((slot) => renderSlot(slot))}
+        </div>
+      </section>
+
+      <section className="picker-section">
+        <div className="picker-section-heading">
+          <h2>{copy.generations}</h2>
+          <p>{copy.generationHint}</p>
+        </div>
+        <div className="picker-generation-grid">
+          {generationSlots.map((slot) => renderSlot(slot))}
+        </div>
+      </section>
+
+      <section className="picker-section">
+        <div className="picker-section-heading">
+          <h2>{copy.types}</h2>
+          <p>{copy.typeHint}</p>
+        </div>
+        <div className="picker-type-grid">
+          {typeSlots.map((slot) => renderSlot(slot))}
+        </div>
+      </section>
+
+      <section className="picker-code-panel">
+        <div>
+          <h2>{copy.boardCode}</h2>
+          <p>{copy.boardCodeLead}</p>
+        </div>
+        <textarea
+          value={importCode}
+          onChange={(event) => setImportCode(event.target.value)}
+          placeholder={copy.codePlaceholder}
+          spellCheck={false}
+        />
+        <div className="picker-code-actions">
+          <button type="button" className="primary-button" onClick={copyBoardCode}>
+            <Copy size={17} />
+            {copy.copyCode}
+          </button>
+          <button type="button" className="secondary-button" onClick={() => void shareBoard()} disabled={!canShareBoard}>
+            <Share2 size={17} />
+            {copy.shareBoard}
+          </button>
+          <button type="button" className="secondary-button" onClick={importBoardCode} disabled={!importCode.trim()}>
+            <Upload size={17} />
+            {copy.importCode}
+          </button>
+          <button type="button" className="secondary-button" onClick={resetBoard}>
+            <RefreshCcw size={17} />
+            {copy.resetBoard}
+          </button>
+        </div>
+        {statusMessage && <p className="picker-status" role="status">{statusMessage}</p>}
+      </section>
+
+      {loading && <div className="spinner" aria-label={t.loading} />}
+
+      {activeSlot && (
+        <div className="picker-dialog-backdrop" role="presentation">
+          <article className="picker-dialog" role="dialog" aria-modal="true" aria-labelledby="picker-dialog-title">
+            <header className="picker-dialog-header">
+              <div>
+                <p>{activeSlot.hint}</p>
+                <h2 id="picker-dialog-title">{copy.choose} {activeSlot.label}</h2>
+              </div>
+              <button className="icon-button" type="button" onClick={() => setActiveSlotId(null)} aria-label={t.close}>
+                <X size={20} />
+              </button>
+            </header>
+            <div className="picker-dialog-tools">
+              <label className="pokedex-search" htmlFor="picker-search">
+                <span>{copy.searchCandidates}</span>
+                <input
+                  id="picker-search"
+                  value={candidateQuery}
+                  onChange={(event) => setCandidateQuery(event.target.value)}
+                  placeholder={t.searchPlaceholder}
+                />
+                <Search className="pokedex-search-icon" size={18} aria-hidden="true" />
+              </label>
+              <label className="pokedex-select" htmlFor="picker-generation">
+                <span>{t.generation}</span>
+                <select
+                  id="picker-generation"
+                  value={candidateGeneration}
+                  onChange={(event) => setCandidateGeneration(event.target.value as 'all' | GenerationKey)}
+                >
+                  <option value="all">{t.allGenerations}</option>
+                  {allGenerations().map((item) => (
+                    <option key={item.key} value={item.key}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="pokedex-select" htmlFor="picker-type">
+                <span>{copy.types}</span>
+                <select
+                  id="picker-type"
+                  value={candidateType}
+                  onChange={(event) => setCandidateType(event.target.value as 'all' | PokemonType)}
+                >
+                  <option value="all">{copy.allTypes}</option>
+                  {pickerTypeOrder.map((type) => (
+                    <option key={type} value={type}>
+                      {t[typeLabelKeys[type]]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <div className="picker-dialog-summary">
+              <span>{template(copy.showingCandidates, {
+                count: String(visibleCandidates.length),
+                total: String(filteredCandidates.length),
+              })}</span>
+              {picks[activeSlot.id] && (
+                <button type="button" onClick={() => clearSlot(activeSlot)}>
+                  {copy.clearSlot}
+                </button>
+              )}
+            </div>
+            {visibleCandidates.length > 0 ? (
+              <div className="picker-candidate-grid">
+                {visibleCandidates.map((row) => (
+                  <button
+                    type="button"
+                    className={picks[activeSlot.id] === row.id ? 'active' : ''}
+                    key={row.id}
+                    onClick={() => choosePokemon(activeSlot, row)}
+                  >
+                    <img
+                      src={pickerPokemonSpriteUrl(row.id, shiny)}
+                      alt=""
+                      width={96}
+                      height={96}
+                      loading="lazy"
+                      decoding="async"
+                    />
+                    <strong>{row.name}</strong>
+                    <span>{row.number}</span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="empty-state">{copy.noCandidates}</p>
+            )}
+          </article>
+        </div>
+      )}
+    </section>
+  );
+}
+
 function PokedexPage({
   pokemon,
   mode,
@@ -5337,7 +6448,7 @@ function makePair(pokemon: PokemonRow[]): [PokemonRow, PokemonRow] {
 
 function normalizeRoute(pathname: string): Route {
   const path = stripLocalePrefix(pathname);
-  if (path === '/game' || path === '/explore' || path === '/pokedex' || path === '/stats') return path;
+  if (path === '/picker' || path === '/game' || path === '/explore' || path === '/pokedex' || path === '/stats') return path;
   return '/';
 }
 

@@ -22,6 +22,7 @@ export const localeOptions = [
 
 export const routes = [
   { path: '/', label: 'Home', changefreq: 'daily', priority: '1.0' },
+  { path: '/picker', label: 'Favorite Pokémon Picker', changefreq: 'weekly', priority: '0.8' },
   { path: '/game', label: 'Game', changefreq: 'weekly', priority: '0.8' },
   { path: '/explore', label: 'Explore', changefreq: 'daily', priority: '0.8' },
   { path: '/pokedex', label: 'Community Pokédex', changefreq: 'weekly', priority: '0.9' },
@@ -33,6 +34,11 @@ const englishRouteSeo = {
     title: `Favmon | ${siteName}`,
     socialTitle: `${siteName} | Favmon`,
     description: 'Declare your favorite or least favorite Pokémon, reveal community Pokédex rankings, and download shareable trainer cards on Favmon.',
+  },
+  '/picker': {
+    title: 'Favorite Pokémon Picker Board | Favmon',
+    socialTitle: 'Favorite Pokémon Picker Board | Favmon',
+    description: 'Build a shareable Favmon picker board with favorite Pokémon by generation, type, team slots, shiny preview, and import or export backup codes.',
   },
   '/game': {
     title: 'Pokémon Popularity Game | Favmon',
@@ -62,6 +68,11 @@ const japaneseRouteSeo = {
     socialTitle: `${siteName} | Favmon`,
     description: 'Favmonで好きなポケモンや苦手なポケモンを宣言し、コミュニティ図鑑ランキングと共有用トレーナーカードを楽しめます。',
   },
+  '/picker': {
+    title: 'お気に入りポケモンピッカーボード | Favmon',
+    socialTitle: 'お気に入りポケモンピッカーボード | Favmon',
+    description: 'Favmonで世代、タイプ、チーム枠ごとにお気に入りのポケモンを選び、バックアップコードをインポートまたはエクスポートできます。',
+  },
   '/game': {
     title: 'ポケモン人気ゲーム | Favmon',
     socialTitle: 'どちらがより愛されている？ | Favmon',
@@ -89,6 +100,11 @@ const koreanRouteSeo = {
     title: `Favmon | ${siteName}`,
     socialTitle: `${siteName} | Favmon`,
     description: 'Favmon에서 가장 좋아하거나 덜 좋아하는 포켓몬을 선언하고 커뮤니티 도감 순위와 공유용 트레이너 카드를 확인하세요.',
+  },
+  '/picker': {
+    title: '좋아하는 포켓몬 피커 보드 | Favmon',
+    socialTitle: '좋아하는 포켓몬 피커 보드 | Favmon',
+    description: 'Favmon에서 세대, 타입, 팀 슬롯별로 좋아하는 포켓몬을 고르고 백업 코드를 가져오거나 내보낼 수 있습니다.',
   },
   '/game': {
     title: '포켓몬 인기 게임 | Favmon',
@@ -118,6 +134,11 @@ const simplifiedChineseRouteSeo = {
     socialTitle: `${siteName} | Favmon`,
     description: '在 Favmon 宣告你最喜欢或最不喜欢的宝可梦，查看社区图鉴排名，并下载适合分享的训练家卡片。',
   },
+  '/picker': {
+    title: '最喜欢宝可梦选择板 | Favmon',
+    socialTitle: '最喜欢宝可梦选择板 | Favmon',
+    description: '在 Favmon 按世代、属性和队伍槽选择你最喜欢的宝可梦，支持闪光预览、导入和导出备份代码。',
+  },
   '/game': {
     title: '宝可梦人气竞猜游戏 | Favmon',
     socialTitle: '谁更受欢迎？ | Favmon',
@@ -145,6 +166,11 @@ const traditionalChineseRouteSeo = {
     title: `Favmon | ${siteName}`,
     socialTitle: `${siteName} | Favmon`,
     description: '在 Favmon 宣告你最喜歡或最不喜歡的寶可夢，查看社群圖鑑排名，並下載適合分享的訓練家卡片。',
+  },
+  '/picker': {
+    title: '最喜歡寶可夢選擇板 | Favmon',
+    socialTitle: '最喜歡寶可夢選擇板 | Favmon',
+    description: '在 Favmon 按世代、屬性和隊伍格選擇你最喜歡的寶可夢，支援閃光預覽、匯入和匯出備份代碼。',
   },
   '/game': {
     title: '寶可夢人氣猜謎遊戲 | Favmon',
@@ -174,6 +200,11 @@ const spanishRouteSeo = {
     socialTitle: `${siteName} | Favmon`,
     description: 'Declara tu Pokémon favorito o menos favorito en Favmon, consulta rankings de la Pokédex comunitaria y descarga cartas para compartir.',
   },
+  '/picker': {
+    title: 'Tablero para elegir Pokémon favoritos | Favmon',
+    socialTitle: 'Tablero para elegir Pokémon favoritos | Favmon',
+    description: 'Crea un tablero Favmon con Pokémon favoritos por generación, tipo y equipo, con vista shiny y códigos de copia de seguridad.',
+  },
   '/game': {
     title: 'Juego de popularidad Pokémon | Favmon',
     socialTitle: '¿Quién es más querido? | Favmon',
@@ -201,6 +232,11 @@ const frenchRouteSeo = {
     title: `Favmon | ${siteName}`,
     socialTitle: `${siteName} | Favmon`,
     description: 'Déclare ton Pokémon préféré ou le moins aimé sur Favmon, consulte les classements du Pokédex communautaire et télécharge des cartes à partager.',
+  },
+  '/picker': {
+    title: 'Tableau de Pokémon favoris | Favmon',
+    socialTitle: 'Tableau de Pokémon favoris | Favmon',
+    description: 'Créez un tableau Favmon avec vos Pokémon favoris par génération, type et équipe, avec aperçu shiny et codes de sauvegarde.',
   },
   '/game': {
     title: 'Jeu de popularité Pokémon | Favmon',
@@ -367,6 +403,7 @@ export function buildStructuredData(route, language) {
       },
       featureList: [
         'Declare a favorite or least favorite Pokémon',
+        'Build and export a Favorite Pokémon picker board',
         'Explore community Pokédex rankings',
         'Play a Pokémon popularity guessing game',
         'Download square, story, and banner social cards',

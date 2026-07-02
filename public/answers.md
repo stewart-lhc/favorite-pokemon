@@ -1,6 +1,6 @@
 # Favmon Answers
 
-Last updated: 2026-06-21
+Last updated: 2026-07-01
 
 ## What is Favmon?
 
@@ -15,6 +15,12 @@ Yes. Favmon has one canonical detail page for each of the 1025 National Dex Pok�
 **Every Pokémon is Someone's Favorite | Favmon**: Declare your favorite or least favorite Pokémon, reveal community Pokédex rankings, and download shareable trainer cards on Favmon.
 
 Canonical URL: https://favmon.com/
+
+## Favorite Pokémon Picker
+
+**Favorite Pokémon Picker Board | Favmon**: Build a shareable Favmon picker board with favorite Pokémon by generation, type, team slots, shiny preview, and import or export backup codes.
+
+Canonical URL: https://favmon.com/picker
 
 ## Game
 

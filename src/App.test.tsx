@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
@@ -86,6 +86,9 @@ describe('Favorite Pokemon clone', () => {
     render(<App />);
 
     expect(await screen.findByRole('heading', { name: /Every Pokémon is/i })).toBeInTheDocument();
+    await user.click(screen.getByRole('link', { name: 'Picker' }));
+    expect(await screen.findByRole('heading', { name: /Build your favorite Pokémon board/i })).toBeInTheDocument();
+
     await user.click(screen.getByRole('link', { name: 'Pokédex' }));
     expect(await screen.findByRole('heading', { name: /Pokémon discovered/i })).toBeInTheDocument();
     expect(screen.getByText(/Showing 4 of 4/i)).toBeInTheDocument();
@@ -309,7 +312,6 @@ describe('Favorite Pokemon clone', () => {
         });
       }),
     );
-
     const user = userEvent.setup();
     render(<App />);
 
@@ -322,6 +324,77 @@ describe('Favorite Pokemon clone', () => {
     expect(window.location.pathname).toBe('/fr');
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Langue' })).toHaveTextContent('FR');
+  });
+
+  it('builds a picker board and restores it from an exported code', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.startsWith('/api/data')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => backendData,
+          });
+        }
+        return Promise.resolve({
+          ok: true,
+          json: async () => pokemonData,
+        });
+      }),
+    );
+    Object.defineProperty(navigator, 'share', {
+      configurable: true,
+      value: undefined,
+    });
+
+    const user = userEvent.setup();
+    render(<App />);
+
+    await screen.findByRole('heading', { name: /Every Pokémon is/i });
+    await user.click(screen.getByRole('link', { name: 'Picker' }));
+
+    expect(await screen.findByRole('heading', { name: 'How to use it' })).toBeInTheDocument();
+    expect(screen.getByText('Click a slot')).toBeInTheDocument();
+    expect(screen.getByText(/Use search and filters in the popup/i)).toBeInTheDocument();
+    expect(screen.getByText('Share or copy')).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Share board' })).toHaveLength(2);
+    screen.getAllByRole('button', { name: 'Share board' }).forEach((button) => expect(button).toBeDisabled());
+
+    const genOneSlot = await screen.findByRole('button', { name: 'Choose Gen I' });
+    await user.click(genOneSlot);
+    await user.click(await screen.findByRole('button', { name: /Pikachu.*#025/i }));
+
+    expect(screen.getByRole('button', { name: 'Choose Gen I' })).toHaveTextContent('Pikachu');
+    screen.getAllByRole('button', { name: 'Share board' }).forEach((button) => expect(button).toBeEnabled());
+
+    await user.click(screen.getAllByRole('button', { name: 'Copy code' })[0]);
+    const codeBox = screen.getByPlaceholderText('Paste a Favmon picker code here') as HTMLTextAreaElement;
+    await waitFor(() => expect(codeBox.value).toContain('"generation-gen1": 25'));
+    const exportedCode = codeBox.value;
+
+    await user.click(screen.getByRole('button', { name: 'Reset board' }));
+    expect(screen.getByRole('button', { name: 'Choose Gen I' })).not.toHaveTextContent('Pikachu');
+    screen.getAllByRole('button', { name: 'Share board' }).forEach((button) => expect(button).toBeDisabled());
+
+    fireEvent.change(codeBox, { target: { value: exportedCode } });
+    await user.click(screen.getByRole('button', { name: 'Import code' }));
+
+    expect(screen.getByRole('button', { name: 'Choose Gen I' })).toHaveTextContent('Pikachu');
+    screen.getAllByRole('button', { name: 'Share board' }).forEach((button) => expect(button).toBeEnabled());
+
+    await user.click(screen.getAllByRole('button', { name: 'Share board' })[0]);
+    await waitFor(() => expect(codeBox.value).toContain('/picker?board='));
+    const sharedUrl = codeBox.value;
+    expect(sharedUrl).toContain('/picker?board=');
+
+    cleanup();
+    localStorage.clear();
+    const openedUrl = new URL(sharedUrl);
+    window.history.replaceState({}, '', `${openedUrl.pathname}${openedUrl.search}`);
+    render(<App />);
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Choose Gen I' })).toHaveTextContent('Pikachu'));
   });
 
   it('shows the source-style success panel after a declaration is saved', async () => {
