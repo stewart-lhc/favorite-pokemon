@@ -2,13 +2,13 @@
 
 | Task | Status | Commit | Requirements review | Quality review |
 | --- | --- | --- | --- | --- |
-| 0. Baseline and ledger | Complete | plan commit | Pass | Pass |
-| 1. Analytics and SPA page views | Complete | task commit | Pass | Pass |
-| 2. Declaration and sharing events | Complete | task commit | Pass | Pass |
-| 3. Picker and Game events | Complete | task commit | Pass | Pass |
-| 4. Tally feedback | Complete | task commit | Pass | Pass |
-| 5. Stats growth page and deep links | In progress | — | Pending | Pending |
-| 6. Static SEO and final gates | Implemented | — | Pending | Pending |
+| 0. Baseline and ledger | Complete | `92413f2` | Pass | Pass |
+| 1. Analytics and SPA page views | Complete | `d8c2ab0` | Pass | Pass |
+| 2. Declaration and sharing events | Complete | `15ca431` | Pass | Pass |
+| 3. Picker and Game events | Complete | `45df0cf` | Pass | Pass |
+| 4. Tally feedback | Complete | `c9d8429` | Pass | Pass |
+| 5. Stats growth page and deep links | Complete | `e17ab54` | Pass | Pass |
+| 6. Static SEO and final gates | Complete | `28f67ef` | Pass | Pass |
 
 ## Shared invariants
 
@@ -195,3 +195,13 @@
 - Requirements re-review: PASS after test-only remediation; no production or fallback requirement changed.
 - Quality re-review: PASS. The metadata mutation and configuration-drift mutation both produced RED before the restored focused suite passed 4/4, and no mutation marker or temporary value remains.
 - Task status: Complete. Full-branch independent review and fresh root-agent verification remain before handoff.
+
+## Final branch verification
+
+- Independent full-branch review: PASS after correcting the stale Task 5/6 summary rows; no remaining P0-P2 findings.
+- Fresh root-agent `npm test`: PASS, 8 files and 72/72 tests.
+- Fresh root-agent `npm run lint`: PASS.
+- Fresh root-agent `npm run build`: PASS, 2,116 prerendered SEO documents including 1,025 Pokémon detail pages.
+- Fresh root-agent `npm run check`: PASS; its repeated full test run also passed 72/72 before the repeated production build succeeded.
+- Artifact verification: `/stats` contains the new title, canonical, community methodology, both modes, Refresh guidance and crawlable navigation; `/game` retains its canonical with the new title; Pikachu retains its canonical and `FAQPage`; sitemap remains 1,095 URLs.
+- Generated date-only asset changes from the final build were restored after artifact inspection. Final `git diff --check` passed.
