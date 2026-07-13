@@ -1842,6 +1842,7 @@ type PickerCopy = {
   resetBoard: string;
   codePlaceholder: string;
   copied: string;
+  exportFailed: string;
   imported: string;
   importError: string;
   emptySlot: string;
@@ -1891,6 +1892,7 @@ const pickerCopies: Record<'en' | 'ja' | 'ko' | 'zh-CN' | 'zh-TW' | 'zh-HK' | 'e
     resetBoard: 'Reset board',
     codePlaceholder: 'Paste a Favmon picker code here',
     copied: 'Copied.',
+    exportFailed: 'Copy failed. The code or link is in the field above—copy it manually.',
     imported: 'Imported.',
     importError: 'Could not read that picker code.',
     emptySlot: 'Choose a Pokémon',
@@ -1938,6 +1940,7 @@ const pickerCopies: Record<'en' | 'ja' | 'ko' | 'zh-CN' | 'zh-TW' | 'zh-HK' | 'e
     resetBoard: 'リセット',
     codePlaceholder: 'Favmon picker code を貼り付け',
     copied: 'コピーしました。',
+    exportFailed: 'コピーできませんでした。上の欄にコードまたはリンクを表示したので、手動でコピーしてください。',
     imported: '読み込みました。',
     importError: 'この picker code は読み込めません。',
     emptySlot: 'ポケモンを選ぶ',
@@ -1985,6 +1988,7 @@ const pickerCopies: Record<'en' | 'ja' | 'ko' | 'zh-CN' | 'zh-TW' | 'zh-HK' | 'e
     resetBoard: '보드 초기화',
     codePlaceholder: 'Favmon picker code 붙여넣기',
     copied: '복사했습니다.',
+    exportFailed: '복사하지 못했습니다. 위 입력란에 코드 또는 링크가 있으니 직접 복사해 주세요.',
     imported: '가져왔습니다.',
     importError: '이 picker code 를 읽을 수 없습니다.',
     emptySlot: '포켓몬 선택',
@@ -2032,6 +2036,7 @@ const pickerCopies: Record<'en' | 'ja' | 'ko' | 'zh-CN' | 'zh-TW' | 'zh-HK' | 'e
     resetBoard: '重置选择板',
     codePlaceholder: '把 Favmon picker code 粘贴到这里',
     copied: '已复制。',
+    exportFailed: '复制失败。代码或链接已放在上方输入框，请手动复制。',
     imported: '已导入。',
     importError: '无法读取这段 picker code。',
     emptySlot: '选择一只宝可梦',
@@ -2079,6 +2084,7 @@ const pickerCopies: Record<'en' | 'ja' | 'ko' | 'zh-CN' | 'zh-TW' | 'zh-HK' | 'e
     resetBoard: '重設選擇板',
     codePlaceholder: '把 Favmon picker code 貼到這裡',
     copied: '已複製。',
+    exportFailed: '複製失敗。代碼或連結已放在上方輸入框，請手動複製。',
     imported: '已匯入。',
     importError: '無法讀取這段 picker code。',
     emptySlot: '選擇一隻寶可夢',
@@ -2126,6 +2132,7 @@ const pickerCopies: Record<'en' | 'ja' | 'ko' | 'zh-CN' | 'zh-TW' | 'zh-HK' | 'e
     resetBoard: '重設選擇板',
     codePlaceholder: '將 Favmon picker code 貼喺呢度',
     copied: '已複製。',
+    exportFailed: '複製失敗。代碼或者連結已放喺上面個輸入框，請手動複製。',
     imported: '已匯入。',
     importError: '讀唔到呢段 picker code。',
     emptySlot: '揀一隻寶可夢',
@@ -2173,6 +2180,7 @@ const pickerCopies: Record<'en' | 'ja' | 'ko' | 'zh-CN' | 'zh-TW' | 'zh-HK' | 'e
     resetBoard: 'Reiniciar tablero',
     codePlaceholder: 'Pega un Favmon picker code aquí',
     copied: 'Copiado.',
+    exportFailed: 'No se pudo copiar. El código o enlace está en el campo de arriba; cópialo manualmente.',
     imported: 'Importado.',
     importError: 'No se pudo leer ese picker code.',
     emptySlot: 'Elige un Pokémon',
@@ -2220,6 +2228,7 @@ const pickerCopies: Record<'en' | 'ja' | 'ko' | 'zh-CN' | 'zh-TW' | 'zh-HK' | 'e
     resetBoard: 'Réinitialiser',
     codePlaceholder: 'Collez un Favmon picker code ici',
     copied: 'Copié.',
+    exportFailed: 'Échec de la copie. Le code ou le lien est dans le champ ci-dessus ; copiez-le manuellement.',
     imported: 'Importé.',
     importError: 'Impossible de lire ce picker code.',
     emptySlot: 'Choisir un Pokémon',
@@ -5270,13 +5279,24 @@ function PickerPage({
     });
   }
 
+  function trackPickerExport(exportMethod: 'clipboard_code' | 'clipboard_link' | 'native') {
+    trackEvent('picker_export', {
+      language,
+      export_method: exportMethod,
+      filled_slots: filledSlots,
+      team_filled: teamFilled,
+      shiny,
+    });
+  }
+
   async function copyBoardCode() {
     setImportCode(exportCode);
     try {
       await copyTextToClipboard(exportCode);
+      trackPickerExport('clipboard_code');
       flashStatus(copy.copied);
     } catch {
-      flashStatus(copy.copied);
+      flashStatus(copy.exportFailed);
     }
   }
 
@@ -5292,20 +5312,24 @@ function PickerPage({
     try {
       if (navigator.share) {
         await navigator.share(sharePayload);
+        trackPickerExport('native');
         flashStatus(copy.shareOpened);
         return;
       }
 
       await copyTextToClipboard(shareUrl);
+      trackPickerExport('clipboard_link');
       flashStatus(copy.copied);
     } catch (shareError) {
       if (shareError instanceof DOMException && shareError.name === 'AbortError') return;
       try {
         await copyTextToClipboard(shareUrl);
+        trackPickerExport('clipboard_link');
+        flashStatus(copy.copied);
       } catch {
         setImportCode(shareUrl);
+        flashStatus(copy.exportFailed);
       }
-      flashStatus(copy.copied);
     }
   }
 
@@ -6006,6 +6030,16 @@ function GamePage({
     if (!pair || revealing) return;
     const other = pair.find((item) => item.id !== row.id)!;
     const correct = mode === 'favourite' ? row.votes >= other.votes : row.votes >= other.votes;
+    const streakAfter = correct ? streak + 1 : streak;
+    trackEvent('game_round_complete', {
+      mode,
+      language,
+      correct,
+      streak_before: streak,
+      streak_after: streakAfter,
+      selected_pokemon_id: row.id,
+      opponent_pokemon_id: other.id,
+    });
     setSelectedId(row.id);
     setRevealing(true);
     window.setTimeout(() => {

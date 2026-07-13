@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { StrictMode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -236,6 +236,7 @@ describe('Favorite Pokemon clone', () => {
 
   afterEach(() => {
     cleanup();
+    vi.useRealTimers();
     delete window.gtag;
     Object.defineProperty(navigator, 'share', { configurable: true, value: undefined });
     Object.defineProperty(navigator, 'canShare', { configurable: true, value: undefined });
@@ -676,7 +677,208 @@ describe('Favorite Pokemon clone', () => {
     render(<App />);
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'Choose Gen I' })).toHaveTextContent('Pikachu'));
-  });
+  }, 30_000);
+
+  it('tracks successful Picker code and link clipboard exports without leaking the board', async () => {
+    window.history.replaceState({}, '', '/picker');
+    localStorage.setItem('favmon_picker_board_v1', JSON.stringify({
+      version: 1,
+      picks: { 'generation-gen1': 25, 'team-1': 4 },
+      shiny: true,
+    }));
+    stubDefaultFetch();
+    const user = userEvent.setup();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'share', { configurable: true, value: undefined });
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+    const gtag = vi.fn();
+    window.gtag = gtag;
+
+    render(<App />);
+    expect(await screen.findByRole('heading', { name: /Build your favorite Pokémon board/i })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Choose Gen I' })).toHaveTextContent('Pikachu'));
+
+    await user.click(screen.getAllByRole('button', { name: 'Copy code' })[0]);
+    await waitFor(() => expect(eventParameters(gtag, 'picker_export')).toHaveLength(1));
+    expect(eventParameters(gtag, 'picker_export')[0]).toEqual({
+      language: 'en',
+      export_method: 'clipboard_code',
+      filled_slots: 2,
+      team_filled: 1,
+      shiny: true,
+    });
+
+    await user.click(screen.getAllByRole('button', { name: 'Share board' })[0]);
+    await waitFor(() => expect(eventParameters(gtag, 'picker_export')).toHaveLength(2));
+    expect(eventParameters(gtag, 'picker_export')[1]).toEqual({
+      language: 'en',
+      export_method: 'clipboard_link',
+      filled_slots: 2,
+      team_filled: 1,
+      shiny: true,
+    });
+
+    const serializedEvents = JSON.stringify(eventParameters(gtag, 'picker_export'));
+    expect(serializedEvents).not.toContain('generation-gen1');
+    expect(serializedEvents).not.toContain('team-1');
+    expect(serializedEvents).not.toContain('Pikachu');
+    expect(serializedEvents).not.toContain('Charmander');
+    expect(serializedEvents).not.toContain('/picker?board=');
+    expect(serializedEvents).not.toContain('"picks"');
+  }, 30_000);
+
+  it('tracks the actual successful Picker export method and ignores failed or aborted exports', async () => {
+    window.history.replaceState({}, '', '/picker');
+    localStorage.setItem('favmon_picker_board_v1', JSON.stringify({
+      version: 1,
+      picks: { 'generation-gen1': 25 },
+      shiny: false,
+    }));
+    stubDefaultFetch();
+    const user = userEvent.setup();
+    const nativeShare = vi.fn()
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new DOMException('Cancelled', 'AbortError'))
+      .mockRejectedValueOnce(new Error('Native failed'))
+      .mockRejectedValueOnce(new Error('Native failed'));
+    const writeText = vi.fn()
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error('Clipboard denied'));
+    Object.defineProperty(navigator, 'share', { configurable: true, value: nativeShare });
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+    const gtag = vi.fn();
+    window.gtag = gtag;
+
+    render(<App />);
+    expect(await screen.findByRole('heading', { name: /Build your favorite Pokémon board/i })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Choose Gen I' })).toHaveTextContent('Pikachu'));
+    const shareButton = screen.getAllByRole('button', { name: 'Share board' })[0];
+
+    await user.click(shareButton);
+    await waitFor(() => expect(eventParameters(gtag, 'picker_export')).toHaveLength(1));
+    expect(eventParameters(gtag, 'picker_export')[0]).toEqual({
+      language: 'en',
+      export_method: 'native',
+      filled_slots: 1,
+      team_filled: 0,
+      shiny: false,
+    });
+
+    await user.click(shareButton);
+    await waitFor(() => expect(nativeShare).toHaveBeenCalledTimes(2));
+    expect(eventParameters(gtag, 'picker_export')).toHaveLength(1);
+
+    await user.click(shareButton);
+    await waitFor(() => expect(eventParameters(gtag, 'picker_export')).toHaveLength(2));
+    expect(eventParameters(gtag, 'picker_export')[1]?.export_method).toBe('clipboard_link');
+    expect(screen.getByRole('status')).toHaveTextContent('Copied.');
+
+    await user.click(shareButton);
+    await waitFor(() => expect(nativeShare).toHaveBeenCalledTimes(4));
+    expect(eventParameters(gtag, 'picker_export')).toHaveLength(2);
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Copy failed. The code or link is in the field above—copy it manually.',
+    );
+    expect(screen.getByRole('status')).not.toHaveTextContent('Copied.');
+    expect((screen.getByPlaceholderText('Paste a Favmon picker code here') as HTMLTextAreaElement).value)
+      .toContain('/picker?board=');
+  }, 30_000);
+
+  it('does not track a rejected Picker code export', async () => {
+    window.history.replaceState({}, '', '/picker');
+    localStorage.setItem('favmon_picker_board_v1', JSON.stringify({
+      version: 1,
+      picks: { 'generation-gen1': 25 },
+      shiny: false,
+    }));
+    stubDefaultFetch();
+    const user = userEvent.setup();
+    const writeText = vi.fn().mockRejectedValue(new Error('Clipboard denied'));
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+    const gtag = vi.fn();
+    window.gtag = gtag;
+
+    render(<App />);
+    expect(await screen.findByRole('heading', { name: /Build your favorite Pokémon board/i })).toBeInTheDocument();
+    await user.click(screen.getAllByRole('button', { name: 'Copy code' })[0]);
+    await waitFor(() => expect(writeText).toHaveBeenCalledOnce());
+    expect(eventParameters(gtag, 'picker_export')).toEqual([]);
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Copy failed. The code or link is in the field above—copy it manually.',
+    );
+    expect(screen.getByRole('status')).not.toHaveTextContent('Copied.');
+    expect((screen.getByPlaceholderText('Paste a Favmon picker code here') as HTMLTextAreaElement).value)
+      .toContain('"generation-gen1": 25');
+  }, 30_000);
+
+  it('tracks one completed correct Game round with the incremented streak', async () => {
+    window.history.replaceState({}, '', '/game');
+    stubDefaultFetch();
+    let randomCall = 0;
+    vi.spyOn(Math, 'random').mockImplementation(() => (randomCall++ % 2 === 0 ? 0.6 : 0.1));
+    const gtag = vi.fn();
+    window.gtag = gtag;
+
+    render(<App />);
+    expect(await screen.findByRole('heading', { name: /Who's More Loved/i })).toBeInTheDocument();
+    await screen.findByRole('button', { name: /Pikachu/i });
+    await screen.findByRole('button', { name: /Bulbasaur/i });
+
+    vi.useFakeTimers();
+    fireEvent.click(screen.getByRole('button', { name: /Pikachu/i }));
+
+    expect(eventParameters(gtag, 'game_round_complete')).toEqual([{
+      mode: 'favourite',
+      language: 'en',
+      correct: true,
+      streak_before: 0,
+      streak_after: 1,
+      selected_pokemon_id: 25,
+      opponent_pokemon_id: 1,
+    }]);
+
+    act(() => {
+      vi.advanceTimersByTime(850);
+    });
+    expect(eventParameters(gtag, 'game_round_complete')).toHaveLength(1);
+  }, 30_000);
+
+  it('tracks one completed incorrect Game round and does not duplicate it after restart', async () => {
+    window.history.replaceState({}, '', '/game');
+    stubDefaultFetch();
+    let randomCall = 0;
+    vi.spyOn(Math, 'random').mockImplementation(() => (randomCall++ % 2 === 0 ? 0.6 : 0.1));
+    const gtag = vi.fn();
+    window.gtag = gtag;
+
+    render(<App />);
+    expect(await screen.findByRole('heading', { name: /Who's More Loved/i })).toBeInTheDocument();
+    await screen.findByRole('button', { name: /Pikachu/i });
+    await screen.findByRole('button', { name: /Bulbasaur/i });
+
+    vi.useFakeTimers();
+    fireEvent.click(screen.getByRole('button', { name: /Bulbasaur/i }));
+
+    expect(eventParameters(gtag, 'game_round_complete')).toEqual([{
+      mode: 'favourite',
+      language: 'en',
+      correct: false,
+      streak_before: 0,
+      streak_after: 0,
+      selected_pokemon_id: 1,
+      opponent_pokemon_id: 25,
+    }]);
+
+    act(() => {
+      vi.advanceTimersByTime(850);
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Play Again/i }));
+    expect(eventParameters(gtag, 'game_round_complete')).toHaveLength(1);
+
+    const serializedEvent = JSON.stringify(eventParameters(gtag, 'game_round_complete'));
+    expect(serializedEvent).not.toContain('Pikachu');
+    expect(serializedEvent).not.toContain('Bulbasaur');
+  }, 30_000);
 
   it('shows the source-style success panel after a declaration is saved', async () => {
     vi.stubGlobal(

@@ -5,7 +5,7 @@
 | 0. Baseline and ledger | Complete | plan commit | Pass | Pass |
 | 1. Analytics and SPA page views | Complete | task commit | Pass | Pass |
 | 2. Declaration and sharing events | Complete | task commit | Pass | Pass |
-| 3. Picker and Game events | Pending | — | Pending | Pending |
+| 3. Picker and Game events | Complete | task commit | Pass | Pass |
 | 4. Tally feedback | Pending | — | Pending | Pending |
 | 5. Stats growth page and deep links | Pending | — | Pending | Pending |
 | 6. Static SEO and final gates | Pending | — | Pending | Pending |
@@ -69,5 +69,30 @@
 - All existing application locales now expose `shareFailed`: English, Spanish (including inherited regional variants), Japanese, Korean, Simplified Chinese, Traditional Chinese (including inherited Hong Kong locale), and French.
 - The three rejected product-action paths reuse the existing timed `shareStatus` live region. They display localized failure copy and still send no `share_link_click`; AbortError remains silent.
 - Full-suite note: two `npm test` attempts each passed 39 of 40 tests and failed only the pre-existing fluctuating `builds a picker board and restores it from an exported code` test. That Picker test passed immediately in isolation (1 passed, 23 skipped). No Picker source behavior was changed in Task 2; the same fluctuation was already recorded under Task 1.
+- Remediation static gates: `npm run lint`, `npx tsc -b`, and `git diff --check` passed.
+- Quality review remains Pending until the independent reviewer rechecks this remediation.
+
+## Task 3 implementation evidence
+
+- Picker restore reproduction: `npx vitest run src/App.test.tsx` hit the shared 15-second test timeout in the existing end-to-end Picker restore flow after 17.345 seconds. The failure was the whole-test timeout rather than a restored-slot assertion; under the same machine load, the following pre-existing declaration success test also exceeded 15 seconds. This matches the earlier full-suite failures plus immediate isolation pass recorded above and points to an unrealistically short budget for the growing integration flow, not a product race.
+- Picker restore stabilization: the test now has a 30-second per-test budget. Its selection, reset, import, restored `Pikachu` slot, enabled/disabled share-button, exported URL, cleanup, and fresh-render assertions are all unchanged. No Picker production timing or restore behavior was changed. The final full suite proves the complete flow GREEN.
+- Picker RED: `npx vitest run src/App.test.tsx -t "Picker.*export|rejected Picker"` failed both successful export scenarios because GA4 received 0 `picker_export` events; the rejected Clipboard scenario already passed and confirmed that failure remained untracked.
+- Picker focused GREEN: the same command passed 3 tests. It covers code Clipboard success, link Clipboard success, native success, AbortError, native-to-Clipboard successful fallback, native plus Clipboard double failure, and direct code Clipboard rejection.
+- Picker privacy evidence: tests assert the exact payload (`language`, `export_method`, `filled_slots`, `team_filled`, `shiny`) and reject slot IDs, Pokémon names, the shared Picker URL, and serialized picks. The implementation constructs the event from aggregate counts and settings only; no board code, query string, Pokémon name, or slot content reaches Analytics.
+- Game RED: `npx vitest run src/App.test.tsx -t "completed.*Game round"` failed both deterministic Pikachu-versus-Bulbasaur scenarios because GA4 received 0 `game_round_complete` events.
+- Game focused GREEN: the same command passed 2 tests. Correct selection reports streak `0 -> 1`; incorrect selection reports `0 -> 0`; both report only mode, language, result, streak values, and numeric selected/opponent IDs. Advancing the reveal animation and using Play Again do not duplicate the prior event.
+- Full GREEN: `npm test` passed 5 files and all 45 tests. Existing jsdom Canvas warnings remain non-failing.
+- Static gates: `npm run lint`, `npx tsc -b`, and `git diff --check` passed.
+- Self-review: events are emitted at product-success or answer-judgement boundaries, never from render/effects. Picker failures and cancellations emit no success event, and a native failure records `clipboard_link` only when its actual Clipboard fallback resolves. Game answers emit once before the reveal timer; reveal and restart contain no tracking calls. No Task 4+ Tally, Stats, metadata, or static SEO behavior was changed.
+- Requirements and quality reviews remain Pending for independent reviewers.
+
+## Task 3 quality-review remediation
+
+- Quality finding: direct Picker code Clipboard rejection and native-share plus Clipboard-fallback double failure correctly emitted no Analytics success event, but both still rendered the false-positive `Copied.` status.
+- Visible-state RED: `npx vitest run src/App.test.tsx -t "actual successful Picker|rejected Picker"` failed both relevant scenarios because the rendered status was `Copied.` instead of an accurate manual-copy instruction.
+- Remediation: `PickerCopy` now defines a dedicated `exportFailed` message in every independent locale object: English, Japanese, Korean, Simplified Chinese, Traditional Chinese, Hong Kong Chinese, Spanish, and French. Regional Spanish variants continue to inherit the Spanish copy.
+- Product behavior: direct code failure leaves the full code in the existing text field and shows the localized manual-copy instruction. Native plus fallback failure leaves the full share URL in that field and shows the same accurate instruction. A resolved Clipboard fallback still shows `Copied.` and sends `picker_export`; `AbortError` remains silent.
+- Focused GREEN: the same command passed 2 tests. Assertions prove failure states do not show `Copied.`, do show the manual-copy instruction, preserve the code/link in the field, and emit no success event; the successful fallback remains covered by the same test.
+- Full GREEN: `npm test` passed 5 files and all 45 tests. Existing jsdom Canvas warnings remain non-failing.
 - Remediation static gates: `npm run lint`, `npx tsc -b`, and `git diff --check` passed.
 - Quality review remains Pending until the independent reviewer rechecks this remediation.
