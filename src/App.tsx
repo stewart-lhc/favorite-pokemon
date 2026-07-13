@@ -49,6 +49,7 @@ import {
   hasDeclaredOnDevice,
   markDeclaredOnDevice,
 } from './lib/storage';
+import { trackPageView, type AnalyticsRouteType } from './lib/analytics';
 import type {
   Declaration,
   DeclarationDetail,
@@ -80,6 +81,17 @@ type AppRoute = Route | '/declaration' | '/pokemon';
 type AppLocation = { route: AppRoute; language: Language; declarationId?: string; pokemonSlug?: string };
 type SortKey = 'number' | 'name' | 'fans';
 type StatusFilter = 'all' | 'revealed' | 'hidden';
+
+const analyticsRouteTypeByRoute = {
+  '/': 'home',
+  '/picker': 'picker',
+  '/game': 'game',
+  '/explore': 'explore',
+  '/pokedex': 'pokedex',
+  '/stats': 'stats',
+  '/pokemon': 'pokemon_detail',
+  '/declaration': 'declaration_detail',
+} as const satisfies Record<AppRoute, AnalyticsRouteType>;
 
 const siteBaseUrl = 'https://favmon.com';
 const siteDomain = 'favmon.com';
@@ -3362,6 +3374,7 @@ export default function App() {
   );
   const [languageMenuOpen, setLanguageMenuOpen] = useState(false);
   const languageMenuRef = useRef<HTMLDivElement | null>(null);
+  const lastPageViewSignatureRef = useRef<string | null>(null);
   const t = useMemo(() => copyFor(language, mode), [language, mode]);
   const pickerCopy = useMemo(() => pickerCopyFor(language), [language]);
   const loading = pokemonLoading;
@@ -3532,6 +3545,25 @@ export default function App() {
     syncAlternateLinksForLocation(currentLocation);
     syncStructuredData(route, language, seo, faq, canonicalUrl);
   }, [route, language, declarationId, pokemonSlug, t]);
+
+  useEffect(() => {
+    const pageUrl = new URL(window.location.href);
+    pageUrl.searchParams.delete('board');
+    pageUrl.hash = '';
+
+    const pageView = {
+      pageLocation: pageUrl.href,
+      pagePath: `${pageUrl.pathname}${pageUrl.search}`,
+      pageTitle: document.title,
+      language,
+      routeType: analyticsRouteTypeByRoute[route],
+    };
+    const signature = JSON.stringify(pageView);
+    if (lastPageViewSignatureRef.current === signature) return;
+
+    lastPageViewSignatureRef.current = signature;
+    trackPageView(pageView);
+  }, [route, language, declarationId, pokemonSlug]);
 
   const displayPokemon = useMemo(() => mergePokemonStats(pokemon, stats), [pokemon, stats]);
   const activeLocaleOption = localeOptions.find((option) => option.code === language) ?? localeOptions[0];

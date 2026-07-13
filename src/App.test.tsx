@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { StrictMode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
 
@@ -53,15 +54,42 @@ const backendData = {
   ],
 };
 
+function stubDefaultFetch() {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.startsWith('/api/data')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => backendData,
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: async () => pokemonData,
+      });
+    }),
+  );
+}
+
+function pageViewParameters(gtag: ReturnType<typeof vi.fn>) {
+  return gtag.mock.calls
+    .filter(([command, eventName]) => command === 'event' && eventName === 'page_view')
+    .map(([, , parameters]) => parameters as Record<string, unknown>);
+}
+
 describe('Favorite Pokemon clone', () => {
   beforeEach(() => {
     window.history.replaceState({}, '', '/');
     localStorage.clear();
     vi.restoreAllMocks();
+    delete window.gtag;
   });
 
   afterEach(() => {
     cleanup();
+    delete window.gtag;
   });
 
   it('renders the declaration landing page and navigates to core sections', async () => {
@@ -98,6 +126,108 @@ describe('Favorite Pokemon clone', () => {
 
     await user.click(screen.getByRole('link', { name: 'Game' }));
     expect(await screen.findByRole('heading', { name: /Who's More Loved/i })).toBeInTheDocument();
+  });
+
+  it('tracks one initial page view and one page view for a canonical SPA navigation', async () => {
+    stubDefaultFetch();
+    const gtag = vi.fn();
+    window.gtag = gtag;
+
+    const user = userEvent.setup();
+    render(<App />);
+
+    expect(await screen.findByRole('heading', { name: /Every Pokémon is/i })).toBeInTheDocument();
+    await waitFor(() => expect(pageViewParameters(gtag)).toHaveLength(1));
+    expect(pageViewParameters(gtag)[0]).toEqual({
+      page_location: `${window.location.origin}/`,
+      page_path: '/',
+      page_title: document.title,
+      language: 'en',
+      route_type: 'home',
+    });
+
+    await user.click(screen.getByRole('link', { name: 'Stats' }));
+    expect(screen.getByRole('heading', { name: /universal declaration/i })).toBeInTheDocument();
+
+    await waitFor(() => expect(pageViewParameters(gtag)).toHaveLength(2));
+    expect(pageViewParameters(gtag)[1]).toEqual({
+      page_location: `${window.location.origin}/stats`,
+      page_path: '/stats',
+      page_title: document.title,
+      language: 'en',
+      route_type: 'stats',
+    });
+  });
+
+  it('deduplicates the StrictMode initial effect replay without suppressing a later return navigation', async () => {
+    stubDefaultFetch();
+    const gtag = vi.fn();
+    window.gtag = gtag;
+
+    const user = userEvent.setup();
+    render(
+      <StrictMode>
+        <App />
+      </StrictMode>,
+    );
+
+    expect(await screen.findByRole('heading', { name: /Every Pokémon is/i })).toBeInTheDocument();
+    expect(pageViewParameters(gtag)).toHaveLength(1);
+
+    await user.click(screen.getByRole('link', { name: 'Stats' }));
+    await waitFor(() => expect(pageViewParameters(gtag)).toHaveLength(2));
+
+    await user.click(screen.getByRole('link', { name: 'Declare' }));
+    await waitFor(() => expect(pageViewParameters(gtag)).toHaveLength(3));
+    expect(pageViewParameters(gtag).map(({ page_path: pagePath }) => pagePath)).toEqual([
+      '/',
+      '/stats',
+      '/',
+    ]);
+  });
+
+  it.each([
+    ['/zh-cn/pokemon/pikachu', 'zh-CN', 'pokemon_detail'],
+    ['/declaration/latest-1', 'en', 'declaration_detail'],
+  ])('uses a stable route type for the detail route %s', async (path, expectedLanguage, expectedRouteType) => {
+    window.history.replaceState({}, '', path);
+    stubDefaultFetch();
+    const gtag = vi.fn();
+    window.gtag = gtag;
+
+    render(<App />);
+
+    await waitFor(() => expect(pageViewParameters(gtag)).toHaveLength(1));
+    expect(pageViewParameters(gtag)[0]).toEqual({
+      page_location: `${window.location.origin}${path}`,
+      page_path: path,
+      page_title: document.title,
+      language: expectedLanguage,
+      route_type: expectedRouteType,
+    });
+    expect(pageViewParameters(gtag)[0]).not.toHaveProperty('pokemon_id');
+    expect(pageViewParameters(gtag)[0]).not.toHaveProperty('pokemon_slug');
+    expect(pageViewParameters(gtag)[0]).not.toHaveProperty('declaration_id');
+  });
+
+  it('removes a Picker board and hash from page-view URLs while preserving safe query parameters', async () => {
+    window.history.replaceState(
+      {},
+      '',
+      '/picker?board=%7B%22generation-gen1%22%3A25%7D&utm_source=reddit#shared-board',
+    );
+    stubDefaultFetch();
+    const gtag = vi.fn();
+    window.gtag = gtag;
+
+    render(<App />);
+
+    await waitFor(() => expect(pageViewParameters(gtag)).toHaveLength(1));
+    expect(pageViewParameters(gtag)[0]).toMatchObject({
+      page_location: `${window.location.origin}/picker?utm_source=reddit`,
+      page_path: '/picker?utm_source=reddit',
+      route_type: 'picker',
+    });
   });
 
   it('keeps the home showcase unselected until the trainer chooses a Pokemon', async () => {
