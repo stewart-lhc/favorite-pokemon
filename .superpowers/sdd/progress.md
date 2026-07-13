@@ -8,7 +8,7 @@
 | 3. Picker and Game events | Complete | task commit | Pass | Pass |
 | 4. Tally feedback | Complete | task commit | Pass | Pass |
 | 5. Stats growth page and deep links | In progress | — | Pending | Pending |
-| 6. Static SEO and final gates | Pending | — | Pending | Pending |
+| 6. Static SEO and final gates | Implemented | — | Pending | Pending |
 
 ## Shared invariants
 
@@ -162,3 +162,36 @@
 - Requirements review: PASS. The reviewer confirmed the shared request-generation policy, cross-mode isolation, same-mode refresh preservation, transparent community sample, positive-vote filtering, empty states, and canonical detail links. The necessary `src/lib/backend.ts` compatibility option is recorded as a justified minimal scope extension.
 - Quality review: PASS after the cross-mode race remediation. The reviewer confirmed that success, failure, and completion state writes are generation-guarded; mode toggles invalidate stale requests immediately; new-mode failures cannot display old-mode rankings; and the inverse-completion and failed-new-mode tests cover the reported P1 cases.
 - Task status: Complete. Task 6 metadata and static SEO work remains intentionally out of scope for this commit.
+
+## Task 6 status
+
+- Status: Complete.
+- Brief: `.superpowers/sdd/briefs/task-06-static-seo.md`.
+- Requirements review: PASS. The reviewer confirmed exact metadata, trustworthy community scope, dedicated Stats fallback content, artifact regressions, and the necessary semantic `public/answers.md` update.
+- Quality review: PASS after remediation. The reviewer confirmed complete standard/OG/Twitter assertions and the durable full-locale/full-route AST parity test, with no remaining P0-P2 findings.
+
+## Task 6 implementation evidence
+
+- Metadata RED: `npx vitest run src/App.test.tsx -t "syncs trustworthy English metadata" --maxWorkers=1` failed all three new cases because `/`, `/stats`, and `/game` still exposed their previous titles.
+- Metadata focused GREEN: the same command passed all 3 selected cases after synchronizing the exact English title, community-scoped description, canonical, Open Graph title, and Twitter title for each route.
+- Static fallback RED: the pre-implementation `npm run build` succeeded, then the artifact assertion failed because `dist/_seo/stats.html` lacked `Favmon community sample`, `methodology`, `Favorite mode`, `Least-favorite mode`, and `Refresh` content.
+- Static fallback GREEN: the post-implementation build succeeded and the artifact assertion found the new title/canonical, community sample and methodology, both ranking modes, accurate runtime loading and Refresh behavior, plus ordinary Home, Pokédex, and Explore links. It also rejected `Top 10`, `Neon Postgres`, and a fabricated global-ranking marker.
+- Configuration parity: a read-only TypeScript AST comparison evaluated `routeSeoByLanguage` in `src/App.tsx` and `scripts/seo-config.mjs`; every locale and route matched exactly.
+- Regression artifacts: `dist/_seo/game.html` contains its new title, canonical, and community declaration description. `dist/_seo/pokemon/pikachu.html` retains its title, canonical, and `FAQPage`. `public/sitemap.xml` retains 1,095 `<loc>` entries.
+- Static gates: the final Task 6 focused test passed 3 tests; `npm run lint`, `npx tsc -b`, `npm run build`, and `git diff --check` exited 0. The root agent will run the full suite and `npm run check` after independent reviews.
+- Generated-asset hygiene: pure date-only changes in `llms.txt`, `pokemon-pages.md`, `pricing.md`, `robots.txt`, and `sitemap.xml` were restored. `public/answers.md` retains only the three metadata descriptions that changed semantically.
+
+## Task 6 quality-review remediation
+
+- Metadata coverage mutation RED: after adding exact `og:url`, `og:description`, `twitter:url`, and `twitter:description` assertions for Home, Stats, and Game, a temporary mutation wrote root/legacy values into those four fields. The focused run failed all 3 cases at the new assertions, proving they detect missing or stale route metadata. The mutation was then fully restored.
+- Metadata coverage GREEN: the restored implementation passed all three routes with canonical URLs and exact route descriptions across standard, Open Graph, and Twitter metadata.
+- Durable parity mutation RED: new `scripts/seo-config-parity.test.mjs` uses the TypeScript compiler AST to evaluate variable declarations, object literals, identifier aliases, string/template literals, and `as`/`satisfies` wrappers. A temporary `/game.socialTitle` drift in the build config made the test fail 1/1 with the exact differing field; the drift was then restored.
+- Durable parity GREEN: `npx vitest run scripts/seo-config-parity.test.mjs src/App.test.tsx -t "keeps every locale and route metadata entry in parity|syncs trustworthy English metadata" --maxWorkers=1` passed 2 files and 4 selected tests. The parity test validates the complete locale list, route list, three-field shape, and deep equality of both configurations, and is discoverable by normal `npm test`.
+- Remediation gates: `npm run lint`, `npx tsc -b`, `npm run build`, and `git diff --check` exited 0. The build again generated 2,116 SEO documents including 1,025 Pokémon detail pages. No full test suite was run per reviewer/root-agent direction.
+- Scope and asset hygiene: the remediation changes only metadata assertions and the durable parity test. No fallback, answer copy, detail template, or sitemap behavior changed; build-generated date-only noise was restored again. Quality review remains Pending until independent re-review.
+
+## Task 6 final review status
+
+- Requirements re-review: PASS after test-only remediation; no production or fallback requirement changed.
+- Quality re-review: PASS. The metadata mutation and configuration-drift mutation both produced RED before the restored focused suite passed 4/4, and no mutation marker or temporary value remains.
+- Task status: Complete. Full-branch independent review and fresh root-agent verification remain before handoff.

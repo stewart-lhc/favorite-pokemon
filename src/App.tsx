@@ -106,10 +106,10 @@ type RouteSeo = { title: string; socialTitle: string; description: string };
 
 const englishRouteSeo: Record<Route, RouteSeo> = {
   '/': {
-    title: `Favmon | ${siteName}`,
-    socialTitle: `${siteName} | Favmon`,
+    title: 'Declare & Rank Your Favorite Pokémon | Favmon',
+    socialTitle: 'Declare & Rank Your Favorite Pokémon | Favmon',
     description:
-      'Declare your favorite or least favorite Pokémon, reveal community Pokédex rankings, and download shareable trainer cards on Favmon.',
+      'Declare your favorite or least favorite Pokémon, explore rankings built from Favmon community declarations, and download shareable trainer cards.',
   },
   '/picker': {
     title: `Favorite Pokémon Picker Board | Favmon`,
@@ -118,10 +118,10 @@ const englishRouteSeo: Record<Route, RouteSeo> = {
       'Build a shareable Favmon picker board with favorite Pokémon by generation, type, team slots, shiny preview, and import or export backup codes.',
   },
   '/game': {
-    title: `Pokémon Popularity Game | Favmon`,
-    socialTitle: `Who's More Loved? | Favmon`,
+    title: 'Guess Which Pokémon Is More Popular | Favmon',
+    socialTitle: 'Guess Which Pokémon Is More Popular | Favmon',
     description:
-      'Play Favmon\'s Pokémon popularity guessing game and choose which Pokémon has more love from community declaration data.',
+      'Guess which Pokémon has more Favmon community declarations in this community popularity game.',
   },
   '/explore': {
     title: `Explore Pokémon Declarations | Favmon`,
@@ -136,10 +136,10 @@ const englishRouteSeo: Record<Route, RouteSeo> = {
       'Explore Favmon\'s community Pokédex rankings, National Dex coverage, revealed Pokémon, hidden entries, and fan counts.',
   },
   '/stats': {
-    title: `Pokémon Fan Rankings and Stats | Favmon`,
-    socialTitle: `Pokémon Fan Rankings and Stats | Favmon`,
+    title: 'Most Popular Pokémon — Live Community Rankings | Favmon',
+    socialTitle: 'Most Popular Pokémon — Live Community Rankings | Favmon',
     description:
-      'Track Favmon voting stats, top Pokémon rankings, Pokédex coverage, favorite picks, least-favorite picks, and latest declarations.',
+      'Explore live Favorite and Least-favorite Pokémon rankings built from Favmon community declarations, with community sample context and recent submissions.',
   },
 };
 

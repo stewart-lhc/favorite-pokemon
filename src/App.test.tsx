@@ -313,6 +313,45 @@ describe('Favorite Pokemon clone', () => {
     expect(await screen.findByRole('heading', { name: /Who's More Loved/i })).toBeInTheDocument();
   });
 
+  it.each([
+    {
+      path: '/',
+      title: 'Declare & Rank Your Favorite Pokémon | Favmon',
+      description:
+        'Declare your favorite or least favorite Pokémon, explore rankings built from Favmon community declarations, and download shareable trainer cards.',
+      canonical: 'https://favmon.com/',
+    },
+    {
+      path: '/stats',
+      title: 'Most Popular Pokémon — Live Community Rankings | Favmon',
+      description:
+        'Explore live Favorite and Least-favorite Pokémon rankings built from Favmon community declarations, with community sample context and recent submissions.',
+      canonical: 'https://favmon.com/stats',
+    },
+    {
+      path: '/game',
+      title: 'Guess Which Pokémon Is More Popular | Favmon',
+      description:
+        'Guess which Pokémon has more Favmon community declarations in this community popularity game.',
+      canonical: 'https://favmon.com/game',
+    },
+  ])('syncs trustworthy English metadata for $path', async ({ path, title, description, canonical }) => {
+    window.history.replaceState({}, '', path);
+    stubDefaultFetch();
+
+    render(<App />);
+
+    await waitFor(() => expect(document.title).toBe(title));
+    expect(document.querySelector('meta[name="description"]')).toHaveAttribute('content', description);
+    expect(document.querySelector('link[rel="canonical"]')).toHaveAttribute('href', canonical);
+    expect(document.querySelector('meta[property="og:title"]')).toHaveAttribute('content', title);
+    expect(document.querySelector('meta[property="og:url"]')).toHaveAttribute('content', canonical);
+    expect(document.querySelector('meta[property="og:description"]')).toHaveAttribute('content', description);
+    expect(document.querySelector('meta[name="twitter:title"]')).toHaveAttribute('content', title);
+    expect(document.querySelector('meta[name="twitter:url"]')).toHaveAttribute('content', canonical);
+    expect(document.querySelector('meta[name="twitter:description"]')).toHaveAttribute('content', description);
+  });
+
   it('renders transparent community Stats rankings with positive-vote canonical links only', async () => {
     window.history.replaceState({}, '', '/stats');
     stubStatsGrowthFetch();

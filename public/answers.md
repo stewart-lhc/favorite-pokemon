@@ -12,7 +12,7 @@ Yes. Favmon has one canonical detail page for each of the 1025 National Dex Pok�
 
 ## Home
 
-**Every Pokémon is Someone's Favorite | Favmon**: Declare your favorite or least favorite Pokémon, reveal community Pokédex rankings, and download shareable trainer cards on Favmon.
+**Declare & Rank Your Favorite Pokémon | Favmon**: Declare your favorite or least favorite Pokémon, explore rankings built from Favmon community declarations, and download shareable trainer cards.
 
 Canonical URL: https://favmon.com/
 
@@ -24,7 +24,7 @@ Canonical URL: https://favmon.com/picker
 
 ## Game
 
-**Who's More Loved? | Favmon**: Play Favmon's Pokémon popularity guessing game and choose which Pokémon has more love from community declaration data.
+**Guess Which Pokémon Is More Popular | Favmon**: Guess which Pokémon has more Favmon community declarations in this community popularity game.
 
 Canonical URL: https://favmon.com/game
 
@@ -42,7 +42,7 @@ Canonical URL: https://favmon.com/pokedex
 
 ## Stats
 
-**Pokémon Fan Rankings and Stats | Favmon**: Track Favmon voting stats, top Pokémon rankings, Pokédex coverage, favorite picks, least-favorite picks, and latest declarations.
+**Most Popular Pokémon — Live Community Rankings | Favmon**: Explore live Favorite and Least-favorite Pokémon rankings built from Favmon community declarations, with community sample context and recent submissions.
 
 Canonical URL: https://favmon.com/stats
 

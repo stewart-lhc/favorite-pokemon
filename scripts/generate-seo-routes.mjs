@@ -234,8 +234,34 @@ function syncPokemonStructuredData(html, row) {
   return upsertHeadTag(html, script, matcher);
 }
 
+function renderEnglishStatsFallback(seo) {
+  return `<main class="seo-fallback" aria-label="${escapeHtml(seo.socialTitle)}">
+        <h1>${escapeHtml(seo.socialTitle)}</h1>
+        <p>${escapeHtml(seo.description)}</p>
+        <section aria-labelledby="stats-methodology-heading">
+          <h2 id="stats-methodology-heading">About the Favmon community sample and methodology</h2>
+          <p>The rankings are a community sample built from favorite and least-favorite declarations submitted on Favmon. They describe this community's submissions, not a global Pokémon poll.</p>
+          <ul>
+            <li><strong>Favorite mode</strong> ranks Pokémon by declarations from trainers who chose them as favorites.</li>
+            <li><strong>Least-favorite mode</strong> ranks Pokémon by declarations from trainers who chose them as least favorites.</li>
+          </ul>
+          <p>Ranking data loads at runtime. Use Refresh on the live page to request the latest community totals and ranking again. This static fallback does not guess vote counts or ranking order.</p>
+        </section>
+        <nav aria-label="Favmon ranking pages">
+          <ul>
+            <li><a href="${escapeHtml(`${siteBaseUrl}/`)}">Declare a Pokémon</a></li>
+            <li><a href="${escapeHtml(`${siteBaseUrl}/pokedex`)}">Browse the community Pokédex</a></li>
+            <li><a href="${escapeHtml(`${siteBaseUrl}/explore`)}">Explore community declarations</a></li>
+          </ul>
+        </nav>
+      </main>`;
+}
+
 function renderCrawlableFallback(route, language) {
   const seo = seoFor(route, language);
+  if (route === '/stats' && language === 'en') {
+    return renderEnglishStatsFallback(seo);
+  }
   const pageLinks = routes
     .map((entry) => `          <li><a href="${escapeHtml(`${siteBaseUrl}${localizedPathFor(entry.path, language)}`)}">${escapeHtml(entry.label)}</a></li>`)
     .join('\n');
