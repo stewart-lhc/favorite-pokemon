@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { StrictMode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -54,6 +54,16 @@ const backendData = {
   ],
 };
 
+const statsGrowthBackendData = {
+  stats: [
+    { pokemonId: 1, pokemonName: 'Bulbasaur', fanCount: 3 },
+    { pokemonId: 4, pokemonName: 'Charmander', fanCount: 7 },
+    { pokemonId: 25, pokemonName: 'Pikachu', fanCount: 12 },
+    { pokemonId: 129, pokemonName: 'Magikarp', fanCount: 0 },
+  ],
+  latest: backendData.latest,
+};
+
 function stubDefaultFetch() {
   vi.stubGlobal(
     'fetch',
@@ -63,6 +73,25 @@ function stubDefaultFetch() {
         return Promise.resolve({
           ok: true,
           json: async () => backendData,
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: async () => pokemonData,
+      });
+    }),
+  );
+}
+
+function stubStatsGrowthFetch() {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.startsWith('/api/data')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => statsGrowthBackendData,
         });
       }
       return Promise.resolve({
@@ -278,10 +307,288 @@ describe('Favorite Pokemon clone', () => {
     expect(screen.getByText(/Showing 4 of 4/i)).toBeInTheDocument();
 
     await user.click(screen.getByRole('link', { name: 'Stats' }));
-    expect(screen.getByRole('heading', { name: /universal declaration/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /community favorite Pokémon ranking/i })).toBeInTheDocument();
 
     await user.click(screen.getByRole('link', { name: 'Game' }));
     expect(await screen.findByRole('heading', { name: /Who's More Loved/i })).toBeInTheDocument();
+  });
+
+  it('renders transparent community Stats rankings with positive-vote canonical links only', async () => {
+    window.history.replaceState({}, '', '/stats');
+    stubStatsGrowthFetch();
+
+    render(<App />);
+
+    expect(
+      await screen.findByRole('heading', { name: 'Favmon community favorite Pokémon ranking', level: 1 }),
+    ).toBeInTheDocument();
+    expect(await screen.findByText('Favorite mode counts declarations for the Pokémon trainers chose as favorites.')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'About this community sample' })).toBeInTheDocument();
+    expect(await screen.findByText(/22 declarations across 3 Pokémon with at least one declaration/i)).toBeInTheDocument();
+    expect(await screen.findByText(/rankings use community submissions made on Favmon/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Neon|Postgres/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/PokéAPI provides the National Pokédex base data/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Use Refresh to reload the latest community totals and ranking/i)).toBeInTheDocument();
+
+    const topTenSection = screen.getByRole('heading', { name: 'Top 10 most chosen' }).closest('section');
+    expect(topTenSection).not.toBeNull();
+    expect(within(topTenSection!).getByRole('link', { name: 'Pikachu' })).toHaveAttribute('href', '/pokemon/pikachu');
+    expect(within(topTenSection!).getByRole('link', { name: 'Charmander' })).toHaveAttribute('href', '/pokemon/charmander');
+    expect(within(topTenSection!).getByRole('link', { name: 'Bulbasaur' })).toHaveAttribute('href', '/pokemon/bulbasaur');
+    expect(topTenSection!).not.toHaveTextContent('Magikarp');
+    expect(screen.getAllByRole('link', { name: 'Pikachu' }).every((link) => link.getAttribute('href') === '/pokemon/pikachu')).toBe(true);
+
+    const rankingSection = screen.getByRole('heading', { name: 'Full ranking' }).closest('section');
+    expect(rankingSection).not.toBeNull();
+    expect(rankingSection!).not.toHaveTextContent('Magikarp');
+    expect(within(rankingSection!).getByRole('link', { name: 'Bulbasaur' })).toHaveAttribute('href', '/pokemon/bulbasaur');
+
+    const latestSection = screen.getByRole('heading', { name: 'Latest 10 declarations' }).closest('section');
+    expect(latestSection).not.toBeNull();
+    expect(within(latestSection!).getByRole('link', { name: 'Pikachu' })).toHaveAttribute('href', '/pokemon/pikachu');
+    expect(document.querySelector('link[rel="canonical"]')).toHaveAttribute('href', 'https://favmon.com/stats');
+  });
+
+  it('labels the Stats community sample for least-favorite mode', async () => {
+    window.history.replaceState({}, '', '/stats');
+    localStorage.setItem('favorite_pokemon_mode', 'not_favourite');
+    stubStatsGrowthFetch();
+
+    render(<App />);
+
+    expect(
+      await screen.findByRole('heading', { name: 'Favmon community least-favorite Pokémon ranking', level: 1 }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Least-favorite mode counts declarations for the Pokémon trainers chose as least favorites.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/global|worldwide/i)).not.toBeInTheDocument();
+  });
+
+  it('reloads the current Stats mode, keeps existing data while pending, and applies the refreshed response', async () => {
+    window.history.replaceState({}, '', '/stats');
+    let backendRequestCount = 0;
+    let resolveRefresh!: (response: { ok: boolean; json: () => Promise<typeof statsGrowthBackendData> }) => void;
+    const pendingRefresh = new Promise<{ ok: boolean; json: () => Promise<typeof statsGrowthBackendData> }>((resolve) => {
+      resolveRefresh = resolve;
+    });
+    const refreshedBackendData = {
+      stats: [
+        { pokemonId: 1, pokemonName: 'Bulbasaur', fanCount: 3 },
+        { pokemonId: 4, pokemonName: 'Charmander', fanCount: 7 },
+        { pokemonId: 25, pokemonName: 'Pikachu', fanCount: 15 },
+      ],
+      latest: [{ ...backendData.latest[0], pokemonId: 4, pokemonName: 'Charmander', reason: 'Refreshed declaration' }],
+    };
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === '/api/data?mode=favourite') {
+        backendRequestCount += 1;
+        if (backendRequestCount === 1) {
+          return Promise.resolve({ ok: true, json: async () => statsGrowthBackendData });
+        }
+        return pendingRefresh;
+      }
+      return Promise.resolve({ ok: true, json: async () => pokemonData });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    expect(await screen.findByText(/22 declarations across 3 Pokémon/i)).toBeInTheDocument();
+    const refreshButton = screen.getByRole('button', { name: 'Refresh' });
+    await waitFor(() => expect(refreshButton).toBeEnabled());
+    await user.click(refreshButton);
+    expect(fetchMock).toHaveBeenCalledWith('/api/data?mode=favourite');
+    expect(fetchMock.mock.calls.filter(([input]) => String(input) === '/api/data?mode=favourite')).toHaveLength(2);
+    expect(screen.getByText(/22 declarations across 3 Pokémon/i)).toBeInTheDocument();
+    expect(refreshButton).toBeDisabled();
+
+    resolveRefresh({ ok: true, json: async () => refreshedBackendData });
+
+    expect(await screen.findByText(/25 declarations across 3 Pokémon/i)).toBeInTheDocument();
+    expect(await screen.findByText('Refreshed declaration')).toBeInTheDocument();
+    await waitFor(() => expect(refreshButton).toBeEnabled());
+  });
+
+  it('preserves the visible Stats data and releases Refresh after a reload failure', async () => {
+    window.history.replaceState({}, '', '/stats');
+    let backendRequestCount = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url === '/api/data?mode=favourite') {
+          backendRequestCount += 1;
+          return Promise.resolve(backendRequestCount === 1
+            ? { ok: true, json: async () => statsGrowthBackendData }
+            : { ok: false, status: 503, json: async () => ({}) });
+        }
+        return Promise.resolve({ ok: true, json: async () => pokemonData });
+      }),
+    );
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    expect(await screen.findByText(/22 declarations across 3 Pokémon/i)).toBeInTheDocument();
+    const refreshButton = screen.getByRole('button', { name: 'Refresh' });
+    await waitFor(() => expect(refreshButton).toBeEnabled());
+    await user.click(refreshButton);
+
+    await waitFor(() => expect(backendRequestCount).toBe(2));
+    await waitFor(() => expect(refreshButton).toBeEnabled());
+    expect(screen.getByText(/22 declarations across 3 Pokémon/i)).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: 'Pikachu' }).length).toBeGreaterThan(0);
+  });
+
+  it('ignores a stale favorite Refresh response after least-favorite mode data wins', async () => {
+    window.history.replaceState({}, '', '/stats');
+    let favoriteRequestCount = 0;
+    let resolveFavoriteRefresh!: (response: { ok: boolean; json: () => Promise<unknown> }) => void;
+    let resolveLeastLoad!: (response: { ok: boolean; json: () => Promise<unknown> }) => void;
+    const favoriteRefresh = new Promise<{ ok: boolean; json: () => Promise<unknown> }>((resolve) => {
+      resolveFavoriteRefresh = resolve;
+    });
+    const leastLoad = new Promise<{ ok: boolean; json: () => Promise<unknown> }>((resolve) => {
+      resolveLeastLoad = resolve;
+    });
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === '/api/data?mode=favourite') {
+        favoriteRequestCount += 1;
+        return favoriteRequestCount === 1
+          ? Promise.resolve({ ok: true, json: async () => statsGrowthBackendData })
+          : favoriteRefresh;
+      }
+      if (url === '/api/data?mode=not_favourite') return leastLoad;
+      return Promise.resolve({ ok: true, json: async () => pokemonData });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    expect(await screen.findByText(/22 declarations across 3 Pokémon/i)).toBeInTheDocument();
+    const refreshButton = screen.getByRole('button', { name: 'Refresh' });
+    await waitFor(() => expect(refreshButton).toBeEnabled());
+    await user.click(refreshButton);
+    await waitFor(() => expect(favoriteRequestCount).toBe(2));
+    await user.click(screen.getByRole('button', { name: 'Favourite' }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/data?mode=not_favourite'));
+
+    await act(async () => {
+      resolveLeastLoad({
+        ok: true,
+        json: async () => ({
+          stats: [{ pokemonId: 129, pokemonName: 'Magikarp', fanCount: 9 }],
+          latest: [{ ...backendData.latest[0], pokemonId: 129, pokemonName: 'Magikarp', reason: 'Least-mode winner' }],
+        }),
+      });
+    });
+    expect(await screen.findByText(/9 declarations across 1 Pokémon/i)).toBeInTheDocument();
+    expect(await screen.findByText('Least-mode winner')).toBeInTheDocument();
+
+    await act(async () => {
+      resolveFavoriteRefresh({
+        ok: true,
+        json: async () => ({
+          stats: [{ pokemonId: 25, pokemonName: 'Pikachu', fanCount: 99 }],
+          latest: [{ ...backendData.latest[0], reason: 'Stale favorite response' }],
+        }),
+      });
+    });
+
+    await waitFor(() => expect(screen.getByText(/9 declarations across 1 Pokémon/i)).toBeInTheDocument());
+    expect(screen.queryByText(/99 declarations across/i)).not.toBeInTheDocument();
+    expect(screen.queryByText('Stale favorite response')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Favmon community least-favorite Pokémon ranking' })).toBeInTheDocument();
+  });
+
+  it('clears favorite rankings when the next least-favorite mode load fails', async () => {
+    window.history.replaceState({}, '', '/stats');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url === '/api/data?mode=favourite') {
+          return Promise.resolve({ ok: true, json: async () => statsGrowthBackendData });
+        }
+        if (url === '/api/data?mode=not_favourite') {
+          return Promise.resolve({ ok: false, status: 503, json: async () => ({}) });
+        }
+        return Promise.resolve({ ok: true, json: async () => pokemonData });
+      }),
+    );
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    expect(await screen.findByText(/22 declarations across 3 Pokémon/i)).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: 'Pikachu' }).length).toBeGreaterThan(0);
+    await user.click(screen.getByRole('button', { name: 'Favourite' }));
+
+    expect(await screen.findByRole('heading', { name: 'Favmon community least-favorite Pokémon ranking' })).toBeInTheDocument();
+    expect(await screen.findByText(/0 declarations across 0 Pokémon/i)).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Refresh' })).toBeEnabled());
+    expect(screen.queryByRole('link', { name: 'Pikachu' })).not.toBeInTheDocument();
+    expect(screen.queryByText('This is a real database declaration')).not.toBeInTheDocument();
+    expect(screen.getAllByText('No Pokémon has a declaration in this mode yet.').length).toBeGreaterThanOrEqual(2);
+  });
+
+  it.each([
+    ['favourite'],
+    ['not_favourite'],
+  ])('shows a localized empty state instead of an empty Full Ranking table in %s mode', async (mode) => {
+    window.history.replaceState({}, '', '/stats');
+    localStorage.setItem('favorite_pokemon_mode', mode);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) => Promise.resolve({
+        ok: true,
+        json: async () => String(input).startsWith('/api/data')
+          ? {
+              stats: pokemonData.map((row) => ({ pokemonId: row.id, pokemonName: row.name, fanCount: 0 })),
+              latest: [],
+            }
+          : pokemonData,
+      })),
+    );
+
+    render(<App />);
+
+    await screen.findByText(/0 declarations across 0 Pokémon/i);
+    const rankingSection = await screen.findByRole('heading', { name: 'Full ranking' }).then((heading) => heading.closest('section'));
+    expect(rankingSection).not.toBeNull();
+    expect(within(rankingSection!).getByText('No Pokémon has a declaration in this mode yet.')).toBeInTheDocument();
+    expect(within(rankingSection!).queryByRole('table')).not.toBeInTheDocument();
+  });
+
+  it('links the home latest declaration Pokémon to its canonical detail route', async () => {
+    stubDefaultFetch();
+
+    render(<App />);
+
+    await screen.findByRole('heading', { name: /Every Pokémon is/i });
+    const latestDeclarations = screen.getByRole('region', { name: 'Latest 10 declarations' });
+    expect(await within(latestDeclarations).findByRole('link', { name: 'Pikachu' })).toHaveAttribute(
+      'href',
+      '/pokemon/pikachu',
+    );
+  });
+
+  it('links Explore declaration Pokémon to its localized canonical detail route', async () => {
+    window.history.replaceState({}, '', '/zh-cn/explore');
+    stubDefaultFetch();
+
+    render(<App />);
+
+    const exploreFeed = await screen.findByLabelText('浏览宣言');
+    expect(await within(exploreFeed).findByRole('link', { name: 'Pikachu' })).toHaveAttribute(
+      'href',
+      '/zh-cn/pokemon/pikachu',
+    );
   });
 
   it('keeps a global feedback entry after main content on Game and Explore with sanitized route context', async () => {
@@ -361,7 +668,7 @@ describe('Favorite Pokemon clone', () => {
     });
 
     await user.click(screen.getByRole('link', { name: 'Stats' }));
-    expect(screen.getByRole('heading', { name: /universal declaration/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /community favorite Pokémon ranking/i })).toBeInTheDocument();
 
     await waitFor(() => expect(pageViewParameters(gtag)).toHaveLength(2));
     expect(pageViewParameters(gtag)[1]).toEqual({

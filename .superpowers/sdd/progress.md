@@ -7,7 +7,7 @@
 | 2. Declaration and sharing events | Complete | task commit | Pass | Pass |
 | 3. Picker and Game events | Complete | task commit | Pass | Pass |
 | 4. Tally feedback | Complete | task commit | Pass | Pass |
-| 5. Stats growth page and deep links | Pending | — | Pending | Pending |
+| 5. Stats growth page and deep links | In progress | — | Pending | Pending |
 | 6. Static SEO and final gates | Pending | — | Pending | Pending |
 
 ## Shared invariants
@@ -122,3 +122,43 @@
 - Remediation focused GREEN: `npx vitest run src/lib/tally.test.ts src/components/FeedbackButton.test.tsx src/App.test.tsx -t "Tally adapter|FeedbackButton|global feedback entry|contextual feedback CTA"` passed 13 tests with 29 unrelated tests skipped.
 - Remediation full GREEN: final `npm test` passed 7 files and all 58 tests after the timer lifecycle lint refactor; existing jsdom Canvas warnings remain non-failing. `npm run lint` and `npx tsc -b` passed.
 - Requirements and quality review statuses remain Pending until independent re-review.
+
+## Task 5 implementation evidence
+
+- Stats RED: `npx vitest run src/App.test.tsx -t "transparent community Stats|labels the Stats community sample"` failed both new scenarios because the old page exposed neither the Favmon community favorite H1 nor the least-favorite community H1. The fixture contains three positive-vote Pokémon and one zero-vote Pokémon.
+- Stats focused GREEN: the same command passed 2 tests after adding `mode` to `StatsPage`, independently localized sample/mode/source/PokéAPI/refresh copy, positive-vote filtering before Top 10/Top 25 slicing, canonical localized links in Top 10/Full Ranking/Latest, and a truthful no-positive-vote state.
+- Home/Explore RED: `npx vitest run src/App.test.tsx -t "home latest declaration|Explore declaration Pokémon"` failed both tests because the latest-declaration Pokémon names were plain text and no `Pikachu` link existed.
+- Home/Explore focused GREEN: the same command passed 2 tests after resolving each declaration by Pokémon ID. Home links to `/pokemon/pikachu`; the Simplified Chinese Explore fixture proves the localized `/zh-cn/pokemon/pikachu` route. The links are ordinary anchors and do not replace declaration-card interactions.
+- Ranking integrity self-review: `rankedPokemon` filters `votes > 0` before sorting and slicing. The full Pokédex remains the denominator for coverage, while zero-vote Pokémon cannot appear in Top 10 or Full Ranking.
+- Copy/source self-review: every independent base translation object has its own community sample, favorite/least-favorite mode, Neon source, PokéAPI attribution, page-load refresh, and empty-ranking copy. Regional locale objects continue to inherit their existing base locale. No Stats copy claims a global or worldwide ranking.
+- Static gates: `npx tsc -b` and `npm run lint` passed.
+- Full-suite evidence: the first `npm test` run passed 58 of 62 tests across 6 of 7 files; three pre-existing App integration tests exceeded the 15-second timeout and the previously documented Picker restore test fluctuated. A serial `npm test -- --maxWorkers=1` run passed 57 of 62 tests; it again hit three pre-existing 15-second timeouts plus the Picker fluctuation, while revealing that the new home-link test needed to await the independent backend request rather than only the Pokémon request. The Task 5 test was corrected to await the link; per root-agent instruction no third full test was started. Task 5's four focused scenarios were GREEN before that test-only wait hardening.
+- Scope review: no metadata, static SEO generator, sitemap, detail-page template, or new URL family was changed. Requirements and quality reviews remain Pending for independent reviewers.
+
+## Task 5 quality-review remediation
+
+- Quality RED: the remediation focused run failed all 5 selected scenarios. The Stats fixture still rendered `Neon Postgres`; Refresh produced only the initial `/api/data?mode=favourite` call; the failed refresh likewise made no second call; and Favorite/Least-favorite Full Ranking sections both rendered an empty table instead of the localized empty state.
+- Durable copy: all seven independent base locale objects now describe ranking source as community submissions made on Favmon, without exposing the database vendor. Their refresh copy now accurately tells users to use the Refresh control; it no longer claims an automatic page-load refresh. The Stats test asserts the durable product source and rejects `Neon`/`Postgres` in the rendered page.
+- Real refresh: `StatsPage` receives an async `onRefresh` callback. The control now calls `loadBackendData` for the active mode, remains disabled while pending, preserves the visible ranking during the request, replaces Stats and Latest data on success, and always releases its pending state. The fake 550ms timer was removed.
+- Failure resilience: `loadBackendData` keeps its existing fail-soft default for compatibility and accepts `{ throwOnError: true }` for callers that must distinguish failure from a legitimate empty dataset. App initial loads and manual refresh use strict mode; a failed request reports the existing warning, retains the previously visible stats/declarations, and does not leave Refresh disabled.
+- Empty rankings: when `rankedPokemon` is empty, Top 10 and Full Ranking both render the same localized `statsNoRankedPokemon` message. Full Ranking does not render an empty table. Separate Favorite and Least-favorite scenarios cover this behavior.
+- Async test stability: Stats methodology, sample, source, refresh copy, and declaration links use `findBy*`/`waitFor` at backend-dependent boundaries. Assertions retain their original content, link, zero-filtering, and canonical requirements.
+- Focused GREEN: `npx vitest run src/lib/backend.test.ts src/App.test.tsx -t "backend API client|transparent community Stats|labels the Stats community sample|reloads the current Stats mode|preserves the visible Stats data|empty state instead of an empty Full Ranking|home latest declaration|Explore declaration Pokémon"` passed 13 tests across 2 files with 31 unrelated tests skipped.
+- Full-suite attempt: `npm test` passed 64 of 66 tests. The only application failure was the repeatedly documented pre-existing Picker restore fluctuation. The other failure identified a backend default-contract regression from the first strict-loader implementation; that regression was corrected with the opt-in strict option, and all 5 backend compatibility tests then passed in the focused GREEN run.
+- Final full-suite retry after the backend compatibility fix again passed 64 of 66 tests. All backend and Task 5 tests passed; failures were the previously documented Picker restore fluctuation and an unrelated declaration share-card readiness wait under suite load. No Task 5 assertion failed, and no further full-suite retry was started.
+- Static gates after remediation: `npm run lint`, `npx tsc -b`, and `git diff --check` passed. Quality review remains Pending for independent re-review.
+
+## Task 5 cross-mode race remediation
+
+- Race RED: `npx vitest run src/App.test.tsx -t "ignores a stale favorite Refresh|clears favorite rankings"` failed both new scenarios. A pending Favorite refresh completed after a successful Least-favorite load and replaced the visible 9-vote Least-favorite data with stale 99-vote Favorite data. A failed Least-favorite mode load left the prior 22-vote Favorite ranking visible under the Least-favorite heading instead of showing the 0-vote empty state.
+- Shared request policy: initial/mode-effect loads and manual Refresh now call one `requestBackendData` function. Each request receives a monotonically increasing generation. Only the current generation may update stats, declarations, backend error, or loading state; stale success and failure completions are ignored.
+- Mode isolation: toggling mode invalidates the current generation immediately. The new mode request clears the prior mode's stats/declarations before loading, so a failed new-mode request renders truthful empty states rather than mismatched old-mode data. Same-mode manual Refresh still preserves its current data on failure.
+- Race focused GREEN: the same command passed both inverse-completion and failed-new-mode scenarios with 39 unrelated tests skipped.
+- Expanded focused GREEN: `npx vitest run src/lib/backend.test.ts src/App.test.tsx -t "backend API client|transparent community Stats|labels the Stats community sample|reloads the current Stats mode|preserves the visible Stats data|ignores a stale favorite Refresh|clears favorite rankings|empty state instead of an empty Full Ranking|home latest declaration|Explore declaration Pokémon"` passed all 15 selected tests across 2 files with 31 unrelated tests skipped.
+- Static gates: `npm run lint`, `npx tsc -b`, and `git diff --check` passed. Per root-agent direction, no full-suite run was started for this remediation. Quality review remains Pending for independent re-review.
+
+## Task 5 final review status
+
+- Requirements review: PASS. The reviewer confirmed the shared request-generation policy, cross-mode isolation, same-mode refresh preservation, transparent community sample, positive-vote filtering, empty states, and canonical detail links. The necessary `src/lib/backend.ts` compatibility option is recorded as a justified minimal scope extension.
+- Quality review: PASS after the cross-mode race remediation. The reviewer confirmed that success, failure, and completion state writes are generation-guarded; mode toggles invalidate stale requests immediately; new-mode failures cannot display old-mode rankings; and the inverse-completion and failed-new-mode tests cover the reported P1 cases.
+- Task status: Complete. Task 6 metadata and static SEO work remains intentionally out of scope for this commit.

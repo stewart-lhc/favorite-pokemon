@@ -5,18 +5,22 @@ const emptyBackendData: BackendData = {
   latest: [],
 };
 
-export async function loadBackendData(mode: Mode): Promise<BackendData> {
+export async function loadBackendData(
+  mode: Mode,
+  options: { throwOnError?: boolean } = {},
+): Promise<BackendData> {
   try {
     const response = await fetch(`/api/data?mode=${encodeURIComponent(mode)}`);
     if (!response.ok || !isJsonResponse(response)) {
-      return emptyBackendData;
+      throw new Error(`Backend data request failed: ${response.status ?? 'unknown'}`);
     }
     const payload = (await response.json()) as Partial<BackendData>;
     return {
       stats: Array.isArray(payload.stats) ? payload.stats : [],
       latest: Array.isArray(payload.latest) ? payload.latest : [],
     };
-  } catch {
+  } catch (error) {
+    if (options.throwOnError) throw error;
     return emptyBackendData;
   }
 }

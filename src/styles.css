@@ -2953,6 +2953,55 @@ select {
   padding: 20px;
 }
 
+.stats-mode-summary {
+  max-width: 680px;
+  margin: 0;
+  color: var(--soft-navy);
+  font-size: 1rem;
+  font-weight: 850;
+  line-height: 1.6;
+}
+
+[data-mode="not_favourite"] .stats-mode-summary {
+  color: rgba(244, 239, 255, 0.86);
+}
+
+.stats-methodology {
+  display: grid;
+  gap: 8px;
+  margin-top: 18px;
+  padding: clamp(18px, 3vw, 24px);
+  border: 3px solid rgba(34, 41, 77, 0.16);
+  border-radius: 8px;
+  background: rgba(255, 253, 247, 0.88);
+  box-shadow: 0 6px 0 rgba(17, 20, 45, 0.1);
+}
+
+.stats-methodology h2,
+.stats-methodology p {
+  margin: 0;
+}
+
+.stats-methodology h2 {
+  margin-bottom: 4px;
+  font-size: clamp(1.35rem, 2.4vw, 1.8rem);
+}
+
+.stats-methodology p {
+  color: var(--soft-navy);
+  font-weight: 750;
+  line-height: 1.65;
+}
+
+[data-mode="not_favourite"] .stats-methodology {
+  border-color: rgba(83, 216, 251, 0.42);
+  background: rgba(36, 26, 56, 0.9);
+}
+
+[data-mode="not_favourite"] .stats-methodology p {
+  color: rgba(244, 239, 255, 0.84);
+}
+
 .stats-section h2 {
   display: flex;
   align-items: center;
@@ -2982,10 +3031,34 @@ select {
 }
 
 .bar-label span,
+.bar-label .pokemon-detail-link,
 .table-pokemon {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.pokemon-detail-link {
+  color: inherit;
+  font-weight: 950;
+  text-decoration-color: rgba(46, 117, 182, 0.5);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 3px;
+}
+
+.pokemon-detail-link:hover,
+.pokemon-detail-link:focus-visible {
+  color: var(--pokemon-blue);
+  text-decoration-color: currentColor;
+}
+
+.reel-pokemon-name .pokemon-detail-link {
+  color: inherit;
+}
+
+.reel-pokemon-name .pokemon-detail-link:hover,
+.reel-pokemon-name .pokemon-detail-link:focus-visible {
+  color: #fff;
 }
 
 .bar-track {
@@ -5928,7 +6001,8 @@ h1 {
     justify-self: center;
   }
 
-  .bar-label span {
+  .bar-label span,
+  .bar-label .pokemon-detail-link {
     overflow: visible;
     line-height: 1.45;
     overflow-wrap: anywhere;
