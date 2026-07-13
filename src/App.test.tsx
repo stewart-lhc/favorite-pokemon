@@ -232,16 +232,20 @@ describe('Favorite Pokemon clone', () => {
     localStorage.clear();
     vi.restoreAllMocks();
     delete window.gtag;
+    delete window.Tally;
   });
 
   afterEach(() => {
     cleanup();
     vi.useRealTimers();
     delete window.gtag;
+    delete window.Tally;
+    Reflect.deleteProperty(document, 'referrer');
     Object.defineProperty(navigator, 'share', { configurable: true, value: undefined });
     Object.defineProperty(navigator, 'canShare', { configurable: true, value: undefined });
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: undefined });
     vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
   });
 
   it('renders the declaration landing page and navigates to core sections', async () => {
@@ -278,6 +282,64 @@ describe('Favorite Pokemon clone', () => {
 
     await user.click(screen.getByRole('link', { name: 'Game' }));
     expect(await screen.findByRole('heading', { name: /Who's More Loved/i })).toBeInTheDocument();
+  });
+
+  it('keeps a global feedback entry after main content on Game and Explore with sanitized route context', async () => {
+    vi.stubEnv('VITE_TALLY_FEEDBACK_FORM_ID', 'Y5yydd');
+    window.history.replaceState({}, '', '/game?utm_source=reddit&utm_source=ignored#round');
+    Object.defineProperty(document, 'referrer', {
+      configurable: true,
+      value: 'https://www.google.com/search?q=favmon&utm_source=private',
+    });
+    stubDefaultFetch();
+    const openPopup = vi.fn();
+    window.Tally = { openPopup };
+    const user = userEvent.setup();
+
+    render(<App />);
+
+    const gameFeedback = await screen.findByRole('button', { name: 'Feedback' });
+    const main = screen.getByRole('main');
+    expect(main.compareDocumentPosition(gameFeedback) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    await user.click(gameFeedback);
+    expect(openPopup).toHaveBeenCalledWith('Y5yydd', expect.objectContaining({
+      hiddenFields: {
+        page: '/game',
+        route_type: 'game',
+        language: 'en',
+        mode: 'favourite',
+        referrer: 'https://www.google.com',
+        utm_source: 'reddit',
+      },
+    }));
+
+    await user.click(screen.getByRole('link', { name: 'Explore' }));
+    await waitFor(() => expect(window.location.pathname).toBe('/explore'));
+    expect(screen.getByRole('button', { name: 'Feedback' })).toBeInTheDocument();
+  });
+
+  it('adds a contextual feedback CTA after declaration success with the canonical Pokemon slug', async () => {
+    vi.stubEnv('VITE_TALLY_FEEDBACK_FORM_ID', 'Y5yydd');
+    stubDeclarationFetch();
+    const openPopup = vi.fn();
+    window.Tally = { openPopup };
+    const user = userEvent.setup();
+    render(<App />);
+
+    await submitPikachuDeclaration(user);
+    await screen.findByRole('heading', { name: 'Declaration saved. That Pokémon has someone now.' });
+    await user.click(screen.getByRole('button', { name: 'Share feedback' }));
+
+    expect(openPopup).toHaveBeenCalledWith('Y5yydd', expect.objectContaining({
+      hiddenFields: {
+        page: '/',
+        route_type: 'home',
+        pokemon_slug: 'pikachu',
+        language: 'en',
+        mode: 'favourite',
+      },
+    }));
   });
 
   it('tracks one initial page view and one page view for a canonical SPA navigation', async () => {

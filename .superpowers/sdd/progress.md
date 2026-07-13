@@ -6,7 +6,7 @@
 | 1. Analytics and SPA page views | Complete | task commit | Pass | Pass |
 | 2. Declaration and sharing events | Complete | task commit | Pass | Pass |
 | 3. Picker and Game events | Complete | task commit | Pass | Pass |
-| 4. Tally feedback | Pending | — | Pending | Pending |
+| 4. Tally feedback | Complete | task commit | Pass | Pass |
 | 5. Stats growth page and deep links | Pending | — | Pending | Pending |
 | 6. Static SEO and final gates | Pending | — | Pending | Pending |
 
@@ -96,3 +96,29 @@
 - Full GREEN: `npm test` passed 5 files and all 45 tests. Existing jsdom Canvas warnings remain non-failing.
 - Remediation static gates: `npm run lint`, `npx tsc -b`, and `git diff --check` passed.
 - Quality review remains Pending until the independent reviewer rechecks this remediation.
+
+## Task 4 implementation evidence
+
+- Adapter RED: `npx vitest run src/lib/tally.test.ts` failed before production code because `./tally` did not exist (1 failed suite, 0 tests collected).
+- Adapter GREEN: the same command passed 6 tests covering blank Form ID, single-flight loading, an existing Tally API, script failure retry, missing-API retry, strict hidden-field allowlisting, and complete submit-payload isolation.
+- Component RED: `npx vitest run src/components/FeedbackButton.test.tsx` failed before production code because `./FeedbackButton` did not exist (1 failed suite, 0 tests collected).
+- Component GREEN: the same command passed 3 tests covering missing-ID suppression, popup callbacks and exact safe Analytics parameters, localized accessible load failure, and non-blocking adjacent product controls.
+- App RED: `npx vitest run src/App.test.tsx -t "global feedback entry|contextual feedback CTA"` failed both targeted scenarios because neither the global `Feedback` button nor declaration-success `Share feedback` CTA existed.
+- App GREEN: the same command passed both tests after wiring. It proves the global entry follows `<main>`, remains present on Game and Explore, passes pathname-only page plus single-value UTM and origin-only referrer context, and passes a canonical `pikachu` slug from the selected Pokémon to the declaration-success CTA.
+- Focused GREEN: `npx vitest run src/lib/tally.test.ts src/components/FeedbackButton.test.tsx src/App.test.tsx -t "Tally adapter|FeedbackButton|global feedback entry|contextual feedback CTA"` passed 11 tests with 29 unrelated tests skipped.
+- Full GREEN: `npm test` passed 7 files and all 56 tests. Existing jsdom Canvas warnings remain non-failing.
+- Static gates: `npm run lint`, `npx tsc -b`, and `git diff --check` passed.
+- Privacy self-review: production reads only `VITE_TALLY_FEEDBACK_FORM_ID`; no editor URL is present. The adapter copies only `page`, `route_type`, `pokemon_slug`, `language`, `mode`, `referrer`, and `utm_source`. Its Tally `onSubmit` wrapper accepts no application payload and invokes a zero-argument callback, so feedback answers and submission metadata cannot reach GA4.
+- Resilience self-review: scripts load only after a configured entry is clicked; concurrent calls share one promise; script errors and loaded-without-API cases remove the failed script and reset the promise for retry. Missing configuration renders neither entry and inserts no script. All failures remain local to the feedback control.
+- Scope review: no external Tally form/hosting, Stats, metadata, static SEO, or Task 5+ behavior was changed. Requirements and quality reviews remain Pending for independent reviewers.
+
+## Task 4 requirements-review remediation
+
+- Review finding: if the matching widget script already existed and its `load`/`error` event had fired before the adapter attached listeners, while `window.Tally` was absent, the single-flight promise stayed pending forever and the button remained disabled.
+- Stale-script RED: `npx vitest run src/lib/tally.test.ts -t "pre-existing stale script"` failed because fake timers advanced 8,000ms while the promise remained unsettled (`expected true, received false`).
+- Remediation: every script-loading attempt now has a finite 8-second timeout. Success, script error, loaded-without-API, and timeout paths all remove listeners and clear the timer. Failure removes the unusable script, rejects the current call, and resets `loadPromise` so a later click can insert a fresh script.
+- Stale-script GREEN: the same targeted adapter command passed. The test proves timeout rejection, stale-script removal, new-script insertion, and successful retry.
+- UI timeout coverage: a component test preloads a stale script, advances the explicit timeout, verifies the localized `role="status"` failure and re-enabled button, then proves the next click can open Tally.
+- Remediation focused GREEN: `npx vitest run src/lib/tally.test.ts src/components/FeedbackButton.test.tsx src/App.test.tsx -t "Tally adapter|FeedbackButton|global feedback entry|contextual feedback CTA"` passed 13 tests with 29 unrelated tests skipped.
+- Remediation full GREEN: final `npm test` passed 7 files and all 58 tests after the timer lifecycle lint refactor; existing jsdom Canvas warnings remain non-failing. `npm run lint` and `npx tsc -b` passed.
+- Requirements and quality review statuses remain Pending until independent re-review.

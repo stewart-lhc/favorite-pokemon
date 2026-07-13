@@ -1138,6 +1138,67 @@ select {
   gap: 14px;
 }
 
+.feedback-entry {
+  display: grid;
+  justify-items: end;
+  gap: 8px;
+}
+
+.feedback-entry--floating {
+  position: fixed;
+  right: max(18px, env(safe-area-inset-right));
+  bottom: max(18px, env(safe-area-inset-bottom));
+  z-index: 80;
+}
+
+.feedback-entry--contextual {
+  justify-items: start;
+}
+
+.feedback-button {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 15px;
+  border: 3px solid var(--panel-line);
+  border-radius: 999px;
+  background: var(--panel);
+  box-shadow: 0 4px 0 rgba(17, 20, 45, 0.2);
+  color: var(--game-ink);
+  font: inherit;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.feedback-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.feedback-button:focus-visible {
+  outline: 4px solid var(--pokemon-yellow);
+  outline-offset: 3px;
+}
+
+.feedback-button:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+.feedback-status {
+  width: max-content;
+  max-width: min(20rem, calc(100vw - 32px));
+  margin: 0;
+  padding: 9px 12px;
+  border: 2px solid var(--danger);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--game-ink);
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
 .success-pokemon-lockup {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -3499,6 +3560,10 @@ th {
 }
 
 @media (max-width: 1060px) {
+  .feedback-entry--floating {
+    bottom: calc(72px + env(safe-area-inset-bottom));
+  }
+
   .navbar {
     display: grid;
     grid-template-columns: 1fr auto;
