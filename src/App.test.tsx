@@ -79,6 +79,153 @@ function pageViewParameters(gtag: ReturnType<typeof vi.fn>) {
     .map(([, , parameters]) => parameters as Record<string, unknown>);
 }
 
+function eventParameters(gtag: ReturnType<typeof vi.fn>, eventName: string) {
+  return gtag.mock.calls
+    .filter(([command, name]) => command === 'event' && name === eventName)
+    .map(([, , parameters]) => parameters as Record<string, unknown>);
+}
+
+function stubDeclarationFetch({ succeeds = true }: { succeeds?: boolean } = {}) {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === '/api/declarations') {
+        if (!succeeds) {
+          return Promise.resolve({
+            ok: false,
+            status: 500,
+            json: async () => ({ error: 'Declaration was not saved' }),
+          });
+        }
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            declaration: {
+              id: 'posted-1',
+              trainerName: 'Ari',
+              pokemonId: 25,
+              pokemonName: 'pikachu',
+              reason: 'Pikachu has been my favourite forever',
+              mode: 'favourite',
+              createdAt: '2026-06-13T10:00:00.000Z',
+            },
+            fanCount: 13,
+            revealedCount: 7,
+          }),
+        });
+      }
+      if (url.startsWith('/api/data')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ stats: [], latest: [] }),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: async () => pokemonData,
+      });
+    }),
+  );
+}
+
+async function submitPikachuDeclaration(user: ReturnType<typeof userEvent.setup>) {
+  await screen.findByRole('heading', { name: /Every Pokémon is/i });
+  await user.type(screen.getByPlaceholderText('Trainer'), 'Ari');
+  await user.type(screen.getByLabelText('Favourite Pokémon'), 'pika');
+  await user.click(await screen.findByRole('button', { name: /Pikachu.*#025/i }));
+  await user.type(screen.getByPlaceholderText('This is where hearts are won.'), 'Pikachu has been my favourite forever');
+  await user.click(screen.getByRole('button', { name: 'Declare favourite' }));
+}
+
+function stubDeclarationDetailFetch() {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === '/api/declarations?id=posted-1') {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            declaration: {
+              id: 'posted-1',
+              trainerName: 'Ari',
+              pokemonId: 25,
+              pokemonName: 'pikachu',
+              reason: 'Pikachu has been my favourite forever',
+              mode: 'favourite',
+              createdAt: '2026-06-13T10:00:00.000Z',
+            },
+            fanCount: 13,
+            revealedCount: 7,
+            rank: 2,
+            totalDeclarations: 22,
+          }),
+        });
+      }
+      if (url.startsWith('/api/data')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => backendData,
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: async () => pokemonData,
+      });
+    }),
+  );
+}
+
+function installCardCanvasMocks() {
+  const gradient = { addColorStop: vi.fn() };
+  const context = new Proxy<Record<string, unknown>>({
+    createLinearGradient: vi.fn(() => gradient),
+    createRadialGradient: vi.fn(() => gradient),
+    measureText: vi.fn(() => ({ width: 100 })),
+  }, {
+    get(target, property) {
+      if (property in target) return target[property as string];
+      const method = vi.fn();
+      target[property as string] = method;
+      return method;
+    },
+    set(target, property, value) {
+      target[property as string] = value;
+      return true;
+    },
+  });
+
+  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(() => context as unknown as CanvasRenderingContext2D);
+  vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL').mockReturnValue('data:image/png;base64,favmon');
+  vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation((callback) => {
+    callback(new Blob(['favmon'], { type: 'image/png' }));
+  });
+  vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+
+  class LoadedImage {
+    onload: (() => void) | null = null;
+    onerror: (() => void) | null = null;
+    crossOrigin = '';
+
+    set src(_value: string) {
+      queueMicrotask(() => this.onload?.());
+    }
+  }
+
+  vi.stubGlobal('Image', LoadedImage);
+}
+
+async function renderDeclarationSharePage(gtag: ReturnType<typeof vi.fn>) {
+  window.history.replaceState({}, '', '/declaration/posted-1');
+  stubDeclarationDetailFetch();
+  installCardCanvasMocks();
+  window.gtag = gtag as NonNullable<typeof window.gtag>;
+  render(<App />);
+  await screen.findByRole('heading', { name: /Ari chose Pikachu/i });
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Share card' })).toBeEnabled());
+}
+
 describe('Favorite Pokemon clone', () => {
   beforeEach(() => {
     window.history.replaceState({}, '', '/');
@@ -90,6 +237,10 @@ describe('Favorite Pokemon clone', () => {
   afterEach(() => {
     cleanup();
     delete window.gtag;
+    Object.defineProperty(navigator, 'share', { configurable: true, value: undefined });
+    Object.defineProperty(navigator, 'canShare', { configurable: true, value: undefined });
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: undefined });
+    vi.unstubAllGlobals();
   });
 
   it('renders the declaration landing page and navigates to core sections', async () => {
@@ -592,6 +743,183 @@ describe('Favorite Pokemon clone', () => {
     expect(screen.getByRole('link', { name: /Reddit/ })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Bluesky/ })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Threads/ })).toBeInTheDocument();
+  });
+
+  it('tracks exactly one declaration success after the backend save resolves without leaking declaration content', async () => {
+    stubDeclarationFetch();
+    const gtag = vi.fn();
+    window.gtag = gtag;
+
+    const user = userEvent.setup();
+    render(<App />);
+    await submitPikachuDeclaration(user);
+
+    await screen.findByRole('heading', { name: 'Declaration saved. That Pokémon has someone now.' });
+    expect(eventParameters(gtag, 'declaration_submit_success')).toEqual([{
+      pokemon_id: 25,
+      pokemon_slug: 'pikachu',
+      mode: 'favourite',
+      language: 'en',
+      source_page: 'home',
+      fan_count: 13,
+      revealed_count: 7,
+    }]);
+    const serializedEvent = JSON.stringify(eventParameters(gtag, 'declaration_submit_success'));
+    expect(serializedEvent).not.toContain('Ari');
+    expect(serializedEvent).not.toContain('forever');
+    expect(serializedEvent).not.toContain('posted-1');
+  });
+
+  it('does not track declaration success when the backend rejects the declaration', async () => {
+    stubDeclarationFetch({ succeeds: false });
+    const gtag = vi.fn();
+    window.gtag = gtag;
+
+    const user = userEvent.setup();
+    render(<App />);
+    await submitPikachuDeclaration(user);
+
+    expect(await screen.findByText('Declaration was not saved')).toBeInTheDocument();
+    expect(eventParameters(gtag, 'declaration_submit_success')).toEqual([]);
+  });
+
+  it('tracks a card download initiation and a platform share intent with safe context only', async () => {
+    const gtag = vi.fn();
+    await renderDeclarationSharePage(gtag);
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole('button', { name: /Square \(Instagram\)/ }));
+    expect(eventParameters(gtag, 'share_card_download')).toEqual([{
+      pokemon_id: 25,
+      pokemon_slug: 'pikachu',
+      mode: 'favourite',
+      language: 'en',
+      source_page: 'declaration_detail',
+      card_format: 'square',
+      art_style: 'official',
+      shiny: false,
+    }]);
+
+    await user.click(screen.getByRole('link', { name: 'XX' }));
+    expect(eventParameters(gtag, 'share_link_click')).toEqual([{
+      pokemon_id: 25,
+      pokemon_slug: 'pikachu',
+      mode: 'favourite',
+      language: 'en',
+      source_page: 'declaration_detail',
+      method: 'platform_intent',
+      platform: 'x',
+    }]);
+    const serializedEvents = JSON.stringify([
+      ...eventParameters(gtag, 'share_card_download'),
+      ...eventParameters(gtag, 'share_link_click'),
+    ]);
+    expect(serializedEvents).not.toContain('Ari');
+    expect(serializedEvents).not.toContain('forever');
+    expect(serializedEvents).not.toContain('posted-1');
+  });
+
+  it('tracks native sharing only after it resolves and ignores an aborted share', async () => {
+    const nativeShare = vi.fn().mockResolvedValueOnce(undefined);
+    Object.defineProperty(navigator, 'share', { configurable: true, value: nativeShare });
+    const gtag = vi.fn();
+    await renderDeclarationSharePage(gtag);
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole('button', { name: 'Share card' }));
+    await waitFor(() => expect(eventParameters(gtag, 'share_link_click')).toHaveLength(1));
+    expect(eventParameters(gtag, 'share_link_click')[0]).toEqual({
+      pokemon_id: 25,
+      pokemon_slug: 'pikachu',
+      mode: 'favourite',
+      language: 'en',
+      source_page: 'declaration_detail',
+      method: 'native',
+    });
+
+    nativeShare.mockRejectedValueOnce(new DOMException('Cancelled', 'AbortError'));
+    await user.click(screen.getByRole('button', { name: 'Share card' }));
+    await waitFor(() => expect(nativeShare).toHaveBeenCalledTimes(2));
+    expect(eventParameters(gtag, 'share_link_click')).toHaveLength(1);
+  });
+
+  it('tracks successful clipboard shares only after the write resolves', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+    const gtag = vi.fn();
+    await renderDeclarationSharePage(gtag);
+
+    await user.click(screen.getByRole('button', { name: 'Copy link' }));
+    await waitFor(() => expect(eventParameters(gtag, 'share_link_click')).toHaveLength(1));
+    expect(eventParameters(gtag, 'share_link_click')[0]).toEqual({
+      pokemon_id: 25,
+      pokemon_slug: 'pikachu',
+      mode: 'favourite',
+      language: 'en',
+      source_page: 'declaration_detail',
+      method: 'copy_link',
+    });
+  });
+
+  it('shows a localized failure when native share and its clipboard fallback both reject', async () => {
+    const nativeShare = vi.fn().mockRejectedValue(new Error('Native share failed'));
+    const writeText = vi.fn().mockRejectedValue(new Error('Clipboard denied'));
+    const user = userEvent.setup();
+    Object.defineProperty(navigator, 'share', { configurable: true, value: nativeShare });
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+    const gtag = vi.fn();
+    await renderDeclarationSharePage(gtag);
+
+    await user.click(screen.getByRole('button', { name: 'Share card' }));
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledOnce());
+    expect(screen.getByRole('status')).toHaveTextContent('Sharing failed. Please try again.');
+    expect(screen.queryByText('Share sheet opened.')).not.toBeInTheDocument();
+    expect(screen.queryByText('Sharing is not available here. Link copied.')).not.toBeInTheDocument();
+    expect(eventParameters(gtag, 'share_link_click')).toEqual([]);
+  });
+
+  it('shows a localized failure for rejected Copy link and Copy caption writes', async () => {
+    const writeText = vi.fn().mockRejectedValue(new Error('Clipboard denied'));
+    const user = userEvent.setup();
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+    const gtag = vi.fn();
+    await renderDeclarationSharePage(gtag);
+
+    await user.click(screen.getByRole('button', { name: 'Copy link' }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    expect(screen.getByRole('status')).toHaveTextContent('Sharing failed. Please try again.');
+
+    await user.click(screen.getByRole('button', { name: 'Copy caption' }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(2));
+    expect(screen.getByRole('status')).toHaveTextContent('Sharing failed. Please try again.');
+    expect(screen.queryByText('Copied!')).not.toBeInTheDocument();
+    expect(eventParameters(gtag, 'share_link_click')).toEqual([]);
+  });
+
+  it('keeps an aborted native share silent and does not report success', async () => {
+    const nativeShare = vi.fn().mockRejectedValue(new DOMException('Cancelled', 'AbortError'));
+    Object.defineProperty(navigator, 'share', { configurable: true, value: nativeShare });
+    const gtag = vi.fn();
+    await renderDeclarationSharePage(gtag);
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole('button', { name: 'Share card' }));
+
+    await waitFor(() => expect(nativeShare).toHaveBeenCalledOnce());
+    expect(screen.queryByText('Sharing failed. Please try again.')).not.toBeInTheDocument();
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    expect(eventParameters(gtag, 'share_link_click')).toEqual([]);
   });
 
   it('renders a shareable declaration detail route', async () => {

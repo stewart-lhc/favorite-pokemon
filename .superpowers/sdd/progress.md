@@ -4,7 +4,7 @@
 | --- | --- | --- | --- | --- |
 | 0. Baseline and ledger | Complete | plan commit | Pass | Pass |
 | 1. Analytics and SPA page views | Complete | task commit | Pass | Pass |
-| 2. Declaration and sharing events | Pending | — | Pending | Pending |
+| 2. Declaration and sharing events | Complete | task commit | Pass | Pass |
 | 3. Picker and Game events | Pending | — | Pending | Pending |
 | 4. Tally feedback | Pending | — | Pending | Pending |
 | 5. Stats growth page and deep links | Pending | — | Pending | Pending |
@@ -45,3 +45,29 @@
 - StrictMode focused GREEN: `npx vitest run src/lib/analytics.test.ts src/App.test.tsx -t "analytics|tracks one initial page view|deduplicates the StrictMode initial effect replay|uses a stable route type|removes a Picker board and hash"` passed 8 tests (11 unrelated tests skipped). The regression test also proves `/` -> `/stats` -> `/` sends all 3 non-consecutive page views.
 - StrictMode final GREEN: `npm test` passed 5 files and 31 tests; `npm run lint`, `npx tsc -b`, and `git diff --check` passed. Existing jsdom Canvas warnings remain non-failing.
 - Reviews remain pending; this ledger does not mark requirements or quality review as passed.
+
+## Task 2 implementation evidence
+
+- Declaration RED: `npx vitest run src/App.test.tsx -t "tracks exactly one declaration success|does not track declaration success"` produced 1 relevant failure and 1 pass; the successful backend response rendered the success panel, but GA4 received 0 `declaration_submit_success` events instead of the expected single whitelisted event.
+- Declaration focused GREEN: the same command passed both success and backend-rejection scenarios. The success assertion checks the exact parameter object and separately rejects trainer name, reason text, and declaration ID.
+- Sharing RED: `npx vitest run src/App.test.tsx -t "tracks a card download|tracks native sharing|tracks successful clipboard"` failed all 3 scenarios because GA4 received 0 download/native/clipboard events; the underlying download/share/copy interactions remained reachable with deterministic Canvas and Image test doubles.
+- Sharing focused GREEN: the same command passed 3 tests, covering download initiation, platform intent, resolved native share, aborted native share, resolved clipboard copy, and rejected clipboard copy.
+- Analytics isolation RED: `npx vitest run src/lib/analytics.test.ts -t "throwing gtag"` failed because a throwing third-party `gtag` escaped the adapter and could interrupt a product action.
+- Final focused GREEN: `npx vitest run src/lib/analytics.test.ts src/App.test.tsx -t "analytics|tracks exactly one declaration success|does not track declaration success|tracks a card download|tracks native sharing|tracks successful clipboard"` passed 9 tests with 16 unrelated tests skipped.
+- Full GREEN: `npm test` passed 5 files and 37 tests. Existing jsdom Canvas warnings from older tests remain non-failing; the new card-interaction tests use local deterministic Canvas/Image doubles.
+- Static gates: `npm run lint`, `npx tsc -b`, and `git diff --check` all passed.
+- Self-review: declaration success is emitted exactly once only after the backend promise resolves; backend rejection emits none. Download is recorded after the download helper returns. Native and clipboard events are emitted only after their promises resolve; AbortError and rejected clipboard writes emit none. A non-abort native failure preserves the existing clipboard fallback and records `copy_text` only if that fallback resolves.
+- Privacy review: event payloads are constructed from Pokémon ID/slug, mode, language, source page, counts, card settings, method, and platform only. No trainer name, reason, declaration ID, URL containing an ID, or declaration object is passed to Analytics.
+- Semantics note: `share_card_download` means browser download initiation, and `platform_intent` means an explicit outbound click; neither claims that a file was saved or a third-party post was completed.
+- Scope review: no Picker, Game, Tally, Stats, metadata, or static SEO behavior was changed. Requirements and quality reviews remain Pending for independent reviewers.
+
+## Task 2 quality-review remediation
+
+- Review finding: native share plus clipboard fallback failure, and direct Copy link/Copy caption rejection, previously suppressed Analytics success correctly but left the user without product feedback.
+- Failure-feedback RED: `npx vitest run src/App.test.tsx -t "shows a localized failure|keeps an aborted native share silent"` produced 2 relevant failures because both rejected paths rendered no `role="status"`; the AbortError cancellation scenario passed and remained silent.
+- Failure-feedback focused GREEN: `npx vitest run src/App.test.tsx -t "shows a localized failure|keeps an aborted native share silent|tracks successful clipboard shares only"` passed 4 tests with 20 unrelated tests skipped.
+- All existing application locales now expose `shareFailed`: English, Spanish (including inherited regional variants), Japanese, Korean, Simplified Chinese, Traditional Chinese (including inherited Hong Kong locale), and French.
+- The three rejected product-action paths reuse the existing timed `shareStatus` live region. They display localized failure copy and still send no `share_link_click`; AbortError remains silent.
+- Full-suite note: two `npm test` attempts each passed 39 of 40 tests and failed only the pre-existing fluctuating `builds a picker board and restores it from an exported code` test. That Picker test passed immediately in isolation (1 passed, 23 skipped). No Picker source behavior was changed in Task 2; the same fluctuation was already recorded under Task 1.
+- Remediation static gates: `npm run lint`, `npx tsc -b`, and `git diff --check` passed.
+- Quality review remains Pending until the independent reviewer rechecks this remediation.

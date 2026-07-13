@@ -49,7 +49,7 @@ import {
   hasDeclaredOnDevice,
   markDeclaredOnDevice,
 } from './lib/storage';
-import { trackPageView, type AnalyticsRouteType } from './lib/analytics';
+import { trackEvent, trackPageView, type AnalyticsRouteType } from './lib/analytics';
 import type {
   Declaration,
   DeclarationDetail,
@@ -499,6 +499,7 @@ const englishTranslations = {
   shareCopied: 'Copied!',
   shareOpened: 'Share sheet opened.',
   shareFallbackCopied: 'Sharing is not available here. Link copied.',
+  shareFailed: 'Sharing failed. Please try again.',
   shareNetworkGroup: 'Share to social platforms',
   shareFavouriteText: 'I declared {pokemon} as my favourite Pokémon on Favmon. Every Pokémon is someone\'s favourite.',
   shareLeastText: 'I declared {pokemon} as my least favourite Pokémon on Favmon. The community stats are getting spicy.',
@@ -665,6 +666,7 @@ const spanishTranslations: TranslationMessages = {
   shareCopied: '¡Copiado!',
   shareOpened: 'Panel de compartir abierto.',
   shareFallbackCopied: 'Compartir no está disponible aquí. Enlace copiado.',
+  shareFailed: 'No se pudo compartir. Inténtalo de nuevo.',
   shareNetworkGroup: 'Compartir en plataformas sociales',
   shareFavouriteText: 'Declaré a {pokemon} como mi Pokémon favorito en Favmon. Cada Pokémon es el favorito de alguien.',
   shareLeastText: 'Declaré a {pokemon} como mi Pokémon menos favorito en Favmon. Las estadísticas de la comunidad se ponen intensas.',
@@ -829,6 +831,7 @@ const japaneseTranslations: TranslationMessages = {
   shareCopied: 'コピーしました！',
   shareOpened: '共有シートを開きました。',
   shareFallbackCopied: 'この環境では共有できないため、リンクをコピーしました。',
+  shareFailed: '共有できませんでした。もう一度お試しください。',
   shareNetworkGroup: 'ソーシャルで共有',
   shareFavouriteText: 'Favmonで{pokemon}をお気に入りポケモンとして宣言しました。どのポケモンも誰かの最愛です。',
   shareLeastText: 'Favmonで{pokemon}をいちばん苦手なポケモンとして宣言しました。コミュニティ統計がさらに動きます。',
@@ -993,6 +996,7 @@ const koreanTranslations: TranslationMessages = {
   shareCopied: '복사 완료!',
   shareOpened: '공유 시트를 열었습니다.',
   shareFallbackCopied: '이 환경에서는 공유할 수 없어 링크를 복사했습니다.',
+  shareFailed: '공유하지 못했습니다. 다시 시도해 주세요.',
   shareNetworkGroup: '소셜 플랫폼에 공유',
   shareFavouriteText: 'Favmon에서 {pokemon}을(를) 최애 포켓몬으로 선언했습니다. 모든 포켓몬은 누군가의 최애입니다.',
   shareLeastText: 'Favmon에서 {pokemon}을(를) 덜 좋아하는 포켓몬으로 선언했습니다. 커뮤니티 통계가 더 흥미로워집니다.',
@@ -1157,6 +1161,7 @@ const traditionalChineseTranslations: TranslationMessages = {
   shareCopied: '已複製！',
   shareOpened: '已開啟分享面板。',
   shareFallbackCopied: '這個環境無法直接分享，已複製連結。',
+  shareFailed: '分享失敗，請再試一次。',
   shareNetworkGroup: '分享到社群平台',
   shareFavouriteText: '我在 Favmon 宣言 {pokemon} 是我最喜歡的寶可夢。每隻寶可夢都是某個人的最愛。',
   shareLeastText: '我在 Favmon 宣言 {pokemon} 是我最不喜歡的寶可夢。社群統計越來越有看頭了。',
@@ -1321,6 +1326,7 @@ const simplifiedChineseTranslations: TranslationMessages = {
   shareCopied: '已复制！',
   shareOpened: '已打开分享面板。',
   shareFallbackCopied: '当前环境不能直接分享，已复制链接。',
+  shareFailed: '分享失败，请再试一次。',
   shareNetworkGroup: '分享到社交平台',
   shareFavouriteText: '我在 Favmon 宣言 {pokemon} 是我最喜欢的宝可梦。每只宝可梦都是某个人的最爱。',
   shareLeastText: '我在 Favmon 宣言 {pokemon} 是我最不喜欢的宝可梦。社区统计越来越有看头了。',
@@ -1485,6 +1491,7 @@ const frenchTranslations: TranslationMessages = {
   shareCopied: 'Copié !',
   shareOpened: 'Feuille de partage ouverte.',
   shareFallbackCopied: 'Le partage n’est pas disponible ici. Lien copié.',
+  shareFailed: 'Échec du partage. Réessayez.',
   shareNetworkGroup: 'Partager sur les plateformes sociales',
   shareFavouriteText: 'J’ai déclaré {pokemon} comme mon Pokémon favori sur Favmon. Chaque Pokémon est le favori de quelqu’un.',
   shareLeastText: 'J’ai déclaré {pokemon} comme mon Pokémon le moins favori sur Favmon. Les stats de la communauté deviennent piquantes.',
@@ -3849,6 +3856,15 @@ function DeclarePage({
         fanCount: result.fanCount,
         revealedCount: result.revealedCount,
       };
+      trackEvent('declaration_submit_success', {
+        pokemon_id: selected.id,
+        pokemon_slug: selected.slug,
+        mode,
+        language,
+        source_page: 'home',
+        fan_count: result.fanCount,
+        revealed_count: result.revealedCount,
+      });
       markDeclaredOnDevice(mode, summary);
       setAlreadyDeclared(true);
       setSubmittedSummary(summary);
@@ -4083,7 +4099,12 @@ function DeclarationSuccessPanel({
 
           <div className="success-share-column">
             <p className="success-note">{t.instagramChangeFormMsg}</p>
-            <PokemonCardDownloader declaration={declaration} language={language} t={t} />
+            <PokemonCardDownloader
+              declaration={declaration}
+              language={language}
+              sourcePage="declaration_success"
+              t={t}
+            />
           </div>
         </div>
       ) : (
@@ -4386,10 +4407,12 @@ function PokemonDetailPage({
 function PokemonCardDownloader({
   declaration,
   language,
+  sourcePage,
   t,
 }: {
   declaration: Declaration;
   language: Language;
+  sourcePage: 'declaration_success' | 'declaration_detail';
   t: TranslationMessages;
 }) {
   const [artStyle, setArtStyle] = useState<CardArtStyle>('official');
@@ -4465,11 +4488,35 @@ function PokemonCardDownloader({
     target.appendChild(previewCanvas);
   }, [canvases, format]);
 
+  function shareAnalyticsContext() {
+    return {
+      pokemon_id: declaration.pokemonId,
+      pokemon_slug: normalizePokemonLookup(declaration.pokemonName),
+      mode: declaration.mode,
+      language,
+      source_page: sourcePage,
+    };
+  }
+
+  function trackShareLink(method: 'native' | 'copy_link' | 'copy_text' | 'platform_intent', platform?: string) {
+    trackEvent('share_link_click', {
+      ...shareAnalyticsContext(),
+      method,
+      ...(platform ? { platform } : {}),
+    });
+  }
+
   function handleDownload(nextFormat: CardFormatKey) {
     setFormat(nextFormat);
     const canvas = canvases[nextFormat];
     if (!canvas) return;
     downloadCard(canvas, declaration.pokemonName, nextFormat, shiny);
+    trackEvent('share_card_download', {
+      ...shareAnalyticsContext(),
+      card_format: nextFormat,
+      art_style: artStyle,
+      shiny,
+    });
     setDownloaded((current) => ({ ...current, [nextFormat]: true }));
     window.setTimeout(() => {
       setDownloaded((current) => ({ ...current, [nextFormat]: false }));
@@ -4512,27 +4559,44 @@ function PokemonCardDownloader({
         if (!sharedWithFile) {
           await navigator.share(textPayload);
         }
+        trackShareLink('native');
         flashShareStatus(t.shareOpened);
         return;
       }
 
       await copyTextToClipboard(`${shareIntent.text}\n${shareIntent.url}`);
+      trackShareLink('copy_text');
       flashShareStatus(t.shareFallbackCopied);
     } catch (shareError) {
       if (shareError instanceof DOMException && shareError.name === 'AbortError') return;
-      await copyTextToClipboard(`${shareIntent.text}\n${shareIntent.url}`);
-      flashShareStatus(t.shareFallbackCopied);
+      try {
+        await copyTextToClipboard(`${shareIntent.text}\n${shareIntent.url}`);
+        trackShareLink('copy_text');
+        flashShareStatus(t.shareFallbackCopied);
+      } catch {
+        flashShareStatus(t.shareFailed);
+      }
     }
   }
 
   async function handleCopyLink() {
-    await copyTextToClipboard(shareIntent.url);
-    flashShareStatus(t.shareCopied);
+    try {
+      await copyTextToClipboard(shareIntent.url);
+      trackShareLink('copy_link');
+      flashShareStatus(t.shareCopied);
+    } catch {
+      flashShareStatus(t.shareFailed);
+    }
   }
 
   async function handleCopyText() {
-    await copyTextToClipboard(`${shareIntent.text}\n${shareIntent.url}`);
-    flashShareStatus(t.shareCopied);
+    try {
+      await copyTextToClipboard(`${shareIntent.text}\n${shareIntent.url}`);
+      trackShareLink('copy_text');
+      flashShareStatus(t.shareCopied);
+    } catch {
+      flashShareStatus(t.shareFailed);
+    }
   }
 
   return (
@@ -4645,6 +4709,7 @@ function PokemonCardDownloader({
               href={platform.buildHref(shareIntent)}
               target={platform.key === 'email' ? undefined : '_blank'}
               rel={platform.key === 'email' ? undefined : 'noopener noreferrer'}
+              onClick={() => trackShareLink('platform_intent', platform.key)}
             >
               <span className="share-platform-badge">{platform.badge}</span>
               <span className="share-platform-name">{platform.label}</span>
@@ -4828,7 +4893,12 @@ function DeclarationDetailPage({
       </div>
 
       <div className="declaration-result-share">
-        <PokemonCardDownloader declaration={declaration} language={language} t={t} />
+        <PokemonCardDownloader
+          declaration={declaration}
+          language={language}
+          sourcePage="declaration_detail"
+          t={t}
+        />
       </div>
     </section>
   );

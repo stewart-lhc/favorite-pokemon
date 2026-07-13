@@ -19,6 +19,21 @@ describe('analytics', () => {
     })).not.toThrow();
   });
 
+  it('does not let a throwing gtag implementation break product behavior', () => {
+    window.gtag = vi.fn(() => {
+      throw new Error('Analytics script failed');
+    });
+
+    expect(() => trackEvent('share_link_click', { method: 'native' })).not.toThrow();
+    expect(() => trackPageView({
+      pageLocation: 'https://favmon.com/',
+      pagePath: '/',
+      pageTitle: 'Favmon',
+      language: 'en',
+      routeType: 'home',
+    })).not.toThrow();
+  });
+
   it('sends only the explicitly supplied event parameters', () => {
     const gtag = vi.fn();
     window.gtag = gtag;

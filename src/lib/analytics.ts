@@ -30,7 +30,11 @@ export type PageViewParameters = {
 
 function sendEvent(eventName: string, parameters: AnalyticsParameters) {
   if (typeof window === 'undefined' || typeof window.gtag !== 'function') return;
-  window.gtag('event', eventName, parameters);
+  try {
+    window.gtag('event', eventName, parameters);
+  } catch {
+    // Analytics must never block the product action being measured.
+  }
 }
 
 export function trackEvent(eventName: AnalyticsEventName, parameters: AnalyticsParameters = {}) {
