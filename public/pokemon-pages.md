@@ -1,6 +1,6 @@
 # Favmon Pokémon Detail Pages
 
-Last updated: 2026-07-01
+Last updated: 2026-07-14
 
 Favmon provides one canonical detail page for each of the 1025 National Dex Pokémon. Each page follows the URL pattern `https://favmon.com/pokemon/:slug` and includes National Dex metadata, type, generation, community fan count, rank, recent declarations, related Pokémon, and a direct declaration link.
 

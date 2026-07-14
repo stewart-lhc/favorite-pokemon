@@ -1,6 +1,6 @@
 # Favmon Answers
 
-Last updated: 2026-07-01
+Last updated: 2026-07-14
 
 ## What is Favmon?
 
