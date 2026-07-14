@@ -49,6 +49,8 @@ import {
   hasDeclaredOnDevice,
   markDeclaredOnDevice,
 } from './lib/storage';
+import { trackEvent, trackPageView, type AnalyticsRouteType } from './lib/analytics';
+import { FeedbackButton, type FeedbackContext } from './components/FeedbackButton';
 import type {
   Declaration,
   DeclarationDetail,
@@ -81,6 +83,17 @@ type AppLocation = { route: AppRoute; language: Language; declarationId?: string
 type SortKey = 'number' | 'name' | 'fans';
 type StatusFilter = 'all' | 'revealed' | 'hidden';
 
+const analyticsRouteTypeByRoute = {
+  '/': 'home',
+  '/picker': 'picker',
+  '/game': 'game',
+  '/explore': 'explore',
+  '/pokedex': 'pokedex',
+  '/stats': 'stats',
+  '/pokemon': 'pokemon_detail',
+  '/declaration': 'declaration_detail',
+} as const satisfies Record<AppRoute, AnalyticsRouteType>;
+
 const siteBaseUrl = 'https://favmon.com';
 const siteDomain = 'favmon.com';
 const kofiUrl = 'https://ko-fi.com/favmon';
@@ -93,10 +106,10 @@ type RouteSeo = { title: string; socialTitle: string; description: string };
 
 const englishRouteSeo: Record<Route, RouteSeo> = {
   '/': {
-    title: `Favmon | ${siteName}`,
-    socialTitle: `${siteName} | Favmon`,
+    title: 'Declare & Rank Your Favorite Pokémon | Favmon',
+    socialTitle: 'Declare & Rank Your Favorite Pokémon | Favmon',
     description:
-      'Declare your favorite or least favorite Pokémon, reveal community Pokédex rankings, and download shareable trainer cards on Favmon.',
+      'Declare your favorite or least favorite Pokémon, explore rankings built from Favmon community declarations, and download shareable trainer cards.',
   },
   '/picker': {
     title: `Favorite Pokémon Picker Board | Favmon`,
@@ -105,10 +118,10 @@ const englishRouteSeo: Record<Route, RouteSeo> = {
       'Build a shareable Favmon picker board with favorite Pokémon by generation, type, team slots, shiny preview, and import or export backup codes.',
   },
   '/game': {
-    title: `Pokémon Popularity Game | Favmon`,
-    socialTitle: `Who's More Loved? | Favmon`,
+    title: 'Guess Which Pokémon Is More Popular | Favmon',
+    socialTitle: 'Guess Which Pokémon Is More Popular | Favmon',
     description:
-      'Play Favmon\'s Pokémon popularity guessing game and choose which Pokémon has more love from community declaration data.',
+      'Guess which Pokémon has more Favmon community declarations in this community popularity game.',
   },
   '/explore': {
     title: `Explore Pokémon Declarations | Favmon`,
@@ -123,10 +136,10 @@ const englishRouteSeo: Record<Route, RouteSeo> = {
       'Explore Favmon\'s community Pokédex rankings, National Dex coverage, revealed Pokémon, hidden entries, and fan counts.',
   },
   '/stats': {
-    title: `Pokémon Fan Rankings and Stats | Favmon`,
-    socialTitle: `Pokémon Fan Rankings and Stats | Favmon`,
+    title: 'Most Popular Pokémon — Live Community Rankings | Favmon',
+    socialTitle: 'Most Popular Pokémon — Live Community Rankings | Favmon',
     description:
-      'Track Favmon voting stats, top Pokémon rankings, Pokédex coverage, favorite picks, least-favorite picks, and latest declarations.',
+      'Explore live Favorite and Least-favorite Pokémon rankings built from Favmon community declarations, with community sample context and recent submissions.',
   },
 };
 
@@ -434,7 +447,15 @@ const englishTranslations = {
   of: 'of',
   discovered: 'Discovered',
   hiddenShort: 'Hidden',
-  statsHeading: 'How the universal declaration is going',
+  statsHeading: 'Favmon community favorite Pokémon ranking',
+  statsModeFavourite: 'Favorite mode counts declarations for the Pokémon trainers chose as favorites.',
+  statsModeLeastFavourite: 'Least-favorite mode counts declarations for the Pokémon trainers chose as least favorites.',
+  statsSampleHeading: 'About this community sample',
+  statsSampleSummary: '{total} declarations across {unique} Pokémon with at least one declaration, from {pokedex} Pokémon in the National Pokédex.',
+  statsCommunitySource: 'Rankings use community submissions made on Favmon.',
+  statsPokeApiSource: 'PokéAPI provides the National Pokédex base data, including names, types, generations, and images.',
+  statsRefreshSummary: 'Use Refresh to reload the latest community totals and ranking.',
+  statsNoRankedPokemon: 'No Pokémon has a declaration in this mode yet.',
   refresh: 'Refresh',
   refreshing: 'Refreshing...',
   declarations: 'Declarations',
@@ -487,6 +508,10 @@ const englishTranslations = {
   shareCopied: 'Copied!',
   shareOpened: 'Share sheet opened.',
   shareFallbackCopied: 'Sharing is not available here. Link copied.',
+  shareFailed: 'Sharing failed. Please try again.',
+  feedback: 'Feedback',
+  feedbackSuccess: 'Share feedback',
+  feedbackFailed: 'Feedback could not open. Please try again.',
   shareNetworkGroup: 'Share to social platforms',
   shareFavouriteText: 'I declared {pokemon} as my favourite Pokémon on Favmon. Every Pokémon is someone\'s favourite.',
   shareLeastText: 'I declared {pokemon} as my least favourite Pokémon on Favmon. The community stats are getting spicy.',
@@ -600,7 +625,15 @@ const spanishTranslations: TranslationMessages = {
   of: 'de',
   discovered: 'Descubiertos',
   hiddenShort: 'Ocultos',
-  statsHeading: 'Cómo va la declaración universal',
+  statsHeading: 'Ranking de Pokémon favoritos de la comunidad Favmon',
+  statsModeFavourite: 'El modo Favorito cuenta las declaraciones de los Pokémon elegidos como favoritos por los entrenadores.',
+  statsModeLeastFavourite: 'El modo Menos favorito cuenta las declaraciones de los Pokémon elegidos como menos favoritos por los entrenadores.',
+  statsSampleHeading: 'Acerca de esta muestra comunitaria',
+  statsSampleSummary: '{total} declaraciones repartidas entre {unique} Pokémon con al menos una declaración, de {pokedex} Pokémon de la Pokédex Nacional.',
+  statsCommunitySource: 'El ranking usa los envíos comunitarios realizados en Favmon.',
+  statsPokeApiSource: 'PokéAPI proporciona los datos base de la Pokédex Nacional, incluidos nombres, tipos, generaciones e imágenes.',
+  statsRefreshSummary: 'Usa Actualizar para volver a cargar los totales y el ranking más recientes de la comunidad.',
+  statsNoRankedPokemon: 'Todavía no hay ningún Pokémon con una declaración en este modo.',
   refresh: 'Actualizar',
   refreshing: 'Actualizando...',
   declarations: 'Declaraciones',
@@ -653,6 +686,10 @@ const spanishTranslations: TranslationMessages = {
   shareCopied: '¡Copiado!',
   shareOpened: 'Panel de compartir abierto.',
   shareFallbackCopied: 'Compartir no está disponible aquí. Enlace copiado.',
+  shareFailed: 'No se pudo compartir. Inténtalo de nuevo.',
+  feedback: 'Comentarios',
+  feedbackSuccess: 'Enviar comentarios',
+  feedbackFailed: 'No se pudo abrir el formulario. Inténtalo de nuevo.',
   shareNetworkGroup: 'Compartir en plataformas sociales',
   shareFavouriteText: 'Declaré a {pokemon} como mi Pokémon favorito en Favmon. Cada Pokémon es el favorito de alguien.',
   shareLeastText: 'Declaré a {pokemon} como mi Pokémon menos favorito en Favmon. Las estadísticas de la comunidad se ponen intensas.',
@@ -764,7 +801,15 @@ const japaneseTranslations: TranslationMessages = {
   of: '中',
   discovered: '発見済み',
   hiddenShort: '未発見',
-  statsHeading: 'みんなの宣言の進み具合',
+  statsHeading: 'Favmonコミュニティのお気に入りポケモンランキング',
+  statsModeFavourite: 'お気に入りモードでは、トレーナーがお気に入りに選んだポケモンへの宣言を集計します。',
+  statsModeLeastFavourite: '苦手モードでは、トレーナーがいちばん苦手に選んだポケモンへの宣言を集計します。',
+  statsSampleHeading: 'このコミュニティサンプルについて',
+  statsSampleSummary: '全国図鑑{pokedex}匹のうち、1件以上の宣言がある{unique}匹に合計{total}件の宣言があります。',
+  statsCommunitySource: 'ランキングにはFavmonに投稿されたコミュニティの宣言を使用しています。',
+  statsPokeApiSource: '名前、タイプ、世代、画像など全国図鑑の基本データはPokéAPIから取得しています。',
+  statsRefreshSummary: '「更新」を使うと、最新のコミュニティ集計とランキングを再読み込みできます。',
+  statsNoRankedPokemon: 'このモードでは、まだ宣言のあるポケモンはいません。',
   refresh: '更新',
   refreshing: '更新中...',
   declarations: '宣言',
@@ -817,6 +862,10 @@ const japaneseTranslations: TranslationMessages = {
   shareCopied: 'コピーしました！',
   shareOpened: '共有シートを開きました。',
   shareFallbackCopied: 'この環境では共有できないため、リンクをコピーしました。',
+  shareFailed: '共有できませんでした。もう一度お試しください。',
+  feedback: 'フィードバック',
+  feedbackSuccess: '感想を送る',
+  feedbackFailed: 'フィードバックを開けませんでした。もう一度お試しください。',
   shareNetworkGroup: 'ソーシャルで共有',
   shareFavouriteText: 'Favmonで{pokemon}をお気に入りポケモンとして宣言しました。どのポケモンも誰かの最愛です。',
   shareLeastText: 'Favmonで{pokemon}をいちばん苦手なポケモンとして宣言しました。コミュニティ統計がさらに動きます。',
@@ -928,7 +977,15 @@ const koreanTranslations: TranslationMessages = {
   of: '/',
   discovered: '발견됨',
   hiddenShort: '숨김',
-  statsHeading: '전 세계 선언 진행 상황',
+  statsHeading: 'Favmon 커뮤니티 최애 포켓몬 순위',
+  statsModeFavourite: '최애 모드는 트레이너가 가장 좋아한다고 선택한 포켓몬의 선언을 집계합니다.',
+  statsModeLeastFavourite: '덜 좋아함 모드는 트레이너가 가장 덜 좋아한다고 선택한 포켓몬의 선언을 집계합니다.',
+  statsSampleHeading: '이 커뮤니티 표본 안내',
+  statsSampleSummary: '전국도감 {pokedex}마리 중 한 건 이상의 선언을 받은 {unique}마리에 총 {total}건의 선언이 있습니다.',
+  statsCommunitySource: '순위는 Favmon에 제출된 커뮤니티 선언을 사용합니다.',
+  statsPokeApiSource: '이름, 타입, 세대, 이미지 등 전국도감 기본 데이터는 PokéAPI에서 제공합니다.',
+  statsRefreshSummary: '새로고침을 누르면 최신 커뮤니티 집계와 순위를 다시 불러옵니다.',
+  statsNoRankedPokemon: '이 모드에는 아직 선언을 받은 포켓몬이 없습니다.',
   refresh: '새로고침',
   refreshing: '새로고침 중...',
   declarations: '선언',
@@ -981,6 +1038,10 @@ const koreanTranslations: TranslationMessages = {
   shareCopied: '복사 완료!',
   shareOpened: '공유 시트를 열었습니다.',
   shareFallbackCopied: '이 환경에서는 공유할 수 없어 링크를 복사했습니다.',
+  shareFailed: '공유하지 못했습니다. 다시 시도해 주세요.',
+  feedback: '피드백',
+  feedbackSuccess: '의견 보내기',
+  feedbackFailed: '피드백을 열지 못했습니다. 다시 시도해 주세요.',
   shareNetworkGroup: '소셜 플랫폼에 공유',
   shareFavouriteText: 'Favmon에서 {pokemon}을(를) 최애 포켓몬으로 선언했습니다. 모든 포켓몬은 누군가의 최애입니다.',
   shareLeastText: 'Favmon에서 {pokemon}을(를) 덜 좋아하는 포켓몬으로 선언했습니다. 커뮤니티 통계가 더 흥미로워집니다.',
@@ -1092,7 +1153,15 @@ const traditionalChineseTranslations: TranslationMessages = {
   of: '/',
   discovered: '已發現',
   hiddenShort: '未揭曉',
-  statsHeading: '全民宣言進度',
+  statsHeading: 'Favmon 社群最喜歡寶可夢排名',
+  statsModeFavourite: '最喜歡模式會統計訓練家選為最喜歡寶可夢的宣言。',
+  statsModeLeastFavourite: '最不喜歡模式會統計訓練家選為最不喜歡寶可夢的宣言。',
+  statsSampleHeading: '關於這份社群樣本',
+  statsSampleSummary: '全國圖鑑 {pokedex} 隻寶可夢中，有 {unique} 隻至少獲得一則宣言，共計 {total} 則宣言。',
+  statsCommunitySource: '排名使用大家在 Favmon 提交的社群宣言。',
+  statsPokeApiSource: 'PokéAPI 提供全國圖鑑的名稱、屬性、世代與圖片等基礎資料。',
+  statsRefreshSummary: '使用「重新整理」即可重新載入最新社群總數與排名。',
+  statsNoRankedPokemon: '這個模式目前還沒有任何寶可夢獲得宣言。',
   refresh: '重新整理',
   refreshing: '重新整理中...',
   declarations: '宣言',
@@ -1145,6 +1214,10 @@ const traditionalChineseTranslations: TranslationMessages = {
   shareCopied: '已複製！',
   shareOpened: '已開啟分享面板。',
   shareFallbackCopied: '這個環境無法直接分享，已複製連結。',
+  shareFailed: '分享失敗，請再試一次。',
+  feedback: '意見回饋',
+  feedbackSuccess: '分享使用感受',
+  feedbackFailed: '無法開啟意見表單，請再試一次。',
   shareNetworkGroup: '分享到社群平台',
   shareFavouriteText: '我在 Favmon 宣言 {pokemon} 是我最喜歡的寶可夢。每隻寶可夢都是某個人的最愛。',
   shareLeastText: '我在 Favmon 宣言 {pokemon} 是我最不喜歡的寶可夢。社群統計越來越有看頭了。',
@@ -1256,7 +1329,15 @@ const simplifiedChineseTranslations: TranslationMessages = {
   of: '/',
   discovered: '已收集',
   hiddenShort: '待收集',
-  statsHeading: '大家都在选哪些宝可梦',
+  statsHeading: 'Favmon 社区最喜欢宝可梦排名',
+  statsModeFavourite: '最喜欢模式统计训练家选为最喜欢宝可梦的宣言。',
+  statsModeLeastFavourite: '最不喜欢模式统计训练家选为最不喜欢宝可梦的宣言。',
+  statsSampleHeading: '关于这份社区样本',
+  statsSampleSummary: '全国图鉴 {pokedex} 只宝可梦中，有 {unique} 只至少获得一条宣言，共计 {total} 条宣言。',
+  statsCommunitySource: '排名使用大家在 Favmon 提交的社区宣言。',
+  statsPokeApiSource: 'PokéAPI 提供全国图鉴的名称、属性、世代和图片等基础数据。',
+  statsRefreshSummary: '使用“刷新”即可重新加载最新社区总数和排名。',
+  statsNoRankedPokemon: '这个模式目前还没有宝可梦获得宣言。',
   refresh: '刷新',
   refreshing: '刷新中...',
   declarations: '宣言数',
@@ -1309,6 +1390,10 @@ const simplifiedChineseTranslations: TranslationMessages = {
   shareCopied: '已复制！',
   shareOpened: '已打开分享面板。',
   shareFallbackCopied: '当前环境不能直接分享，已复制链接。',
+  shareFailed: '分享失败，请再试一次。',
+  feedback: '反馈',
+  feedbackSuccess: '分享使用体验',
+  feedbackFailed: '无法打开反馈表单，请重试。',
   shareNetworkGroup: '分享到社交平台',
   shareFavouriteText: '我在 Favmon 宣言 {pokemon} 是我最喜欢的宝可梦。每只宝可梦都是某个人的最爱。',
   shareLeastText: '我在 Favmon 宣言 {pokemon} 是我最不喜欢的宝可梦。社区统计越来越有看头了。',
@@ -1420,7 +1505,15 @@ const frenchTranslations: TranslationMessages = {
   of: 'sur',
   discovered: 'Découverts',
   hiddenShort: 'Cachés',
-  statsHeading: 'L’avancement de la déclaration universelle',
+  statsHeading: 'Classement des Pokémon favoris de la communauté Favmon',
+  statsModeFavourite: 'Le mode Favori compte les déclarations pour les Pokémon choisis comme favoris par les dresseurs.',
+  statsModeLeastFavourite: 'Le mode Moins favori compte les déclarations pour les Pokémon choisis comme moins favoris par les dresseurs.',
+  statsSampleHeading: 'À propos de cet échantillon communautaire',
+  statsSampleSummary: '{total} déclarations réparties entre {unique} Pokémon ayant au moins une déclaration, sur {pokedex} Pokémon du Pokédex National.',
+  statsCommunitySource: 'Le classement utilise les contributions communautaires envoyées sur Favmon.',
+  statsPokeApiSource: 'PokéAPI fournit les données de base du Pokédex National, notamment les noms, types, générations et images.',
+  statsRefreshSummary: 'Utilisez Actualiser pour recharger les derniers totaux et le classement de la communauté.',
+  statsNoRankedPokemon: 'Aucun Pokémon n’a encore de déclaration dans ce mode.',
   refresh: 'Actualiser',
   refreshing: 'Actualisation...',
   declarations: 'Déclarations',
@@ -1473,6 +1566,10 @@ const frenchTranslations: TranslationMessages = {
   shareCopied: 'Copié !',
   shareOpened: 'Feuille de partage ouverte.',
   shareFallbackCopied: 'Le partage n’est pas disponible ici. Lien copié.',
+  shareFailed: 'Échec du partage. Réessayez.',
+  feedback: 'Avis',
+  feedbackSuccess: 'Partager votre avis',
+  feedbackFailed: 'Impossible d’ouvrir le formulaire. Réessayez.',
   shareNetworkGroup: 'Partager sur les plateformes sociales',
   shareFavouriteText: 'J’ai déclaré {pokemon} comme mon Pokémon favori sur Favmon. Chaque Pokémon est le favori de quelqu’un.',
   shareLeastText: 'J’ai déclaré {pokemon} comme mon Pokémon le moins favori sur Favmon. Les stats de la communauté deviennent piquantes.',
@@ -1578,7 +1675,7 @@ const spanishNotFavouriteOverrides = {
   journeyContinues: '{count} / 1025 Pokémon ya aparecen en la lista de menos favoritos - seguimos contando...',
   declaredPokemon: 'Tu Pokémon menos favorito',
   discoveredHeading: 'Pokémon elegidos como menos favoritos',
-  statsHeading: 'Cómo va la lista de menos favoritos',
+  statsHeading: 'Ranking de Pokémon menos favoritos de la comunidad Favmon',
   topTen: 'Top 10 menos favoritos',
   latest: 'Últimas 10 elecciones de menos favorito',
   chose: 'eligió como menos favorito',
@@ -1605,7 +1702,7 @@ const notFavouriteOverrides = {
     journeyContinues: '{count} / 1025 Pokémon are now on the least-favourite list - the count continues...',
     declaredPokemon: 'Your least favourite Pokémon',
     discoveredHeading: 'Pokémon chosen as least favourites',
-    statsHeading: 'How the least-favourite list is shaping up',
+    statsHeading: 'Favmon community least-favorite Pokémon ranking',
     topTen: 'Top 10 least favourite',
     latest: 'Latest 10 least-favourite choices',
     chose: 'chose as least favourite',
@@ -1634,7 +1731,7 @@ const notFavouriteOverrides = {
     journeyContinues: '{count} / 1025匹のポケモンが苦手リストに入りました - まだ続きます...',
     declaredPokemon: '苦手に選んだポケモン',
     discoveredHeading: '苦手として選ばれたポケモン',
-    statsHeading: '苦手リストの進み具合',
+    statsHeading: 'Favmonコミュニティの苦手なポケモンランキング',
     topTen: '苦手に選ばれたトップ10',
     latest: '最新10件の苦手な選択',
     chose: 'が苦手に選んだのは',
@@ -1659,7 +1756,7 @@ const notFavouriteOverrides = {
     journeyContinues: '{count} / 1025마리 포켓몬이 덜 좋아함 목록에 올랐습니다 - 계속 집계 중...',
     declaredPokemon: '덜 좋아한다고 선택한 포켓몬',
     discoveredHeading: '덜 좋아함으로 선택된 포켓몬',
-    statsHeading: '덜 좋아함 목록 진행 상황',
+    statsHeading: 'Favmon 커뮤니티 덜 좋아하는 포켓몬 순위',
     topTen: '덜 좋아함 Top 10',
     latest: '최근 덜 좋아함 선택 10개',
     chose: '덜 좋아함:',
@@ -1684,7 +1781,7 @@ const notFavouriteOverrides = {
     journeyContinues: '已有 {count} / 1025 只宝可梦进入最不喜欢统计，列表还在继续...',
     declaredPokemon: '你最不喜欢的宝可梦',
     discoveredHeading: '大家选出的最不喜欢宝可梦',
-    statsHeading: '哪些宝可梦被选为最不喜欢',
+    statsHeading: 'Favmon 社区最不喜欢宝可梦排名',
     topTen: '最不受欢迎 Top 10',
     latest: '最新 10 条最不喜欢选择',
     chose: '选择最不喜欢',
@@ -1709,7 +1806,7 @@ const notFavouriteOverrides = {
     journeyContinues: '{count} / 1025 隻寶可夢已進入最不喜歡統計，列表還在繼續...',
     declaredPokemon: '你最不喜歡的寶可夢',
     discoveredHeading: '大家選出的最不喜歡寶可夢',
-    statsHeading: '哪些寶可夢被選為最不喜歡',
+    statsHeading: 'Favmon 社群最不喜歡寶可夢排名',
     topTen: '最不受歡迎前 10 名',
     latest: '最新 10 則最不喜歡選擇',
     chose: '選為最不喜歡',
@@ -1734,7 +1831,7 @@ const notFavouriteOverrides = {
     journeyContinues: '{count} / 1025 隻寶可夢已加入最唔鍾意統計，列表仲繼續...',
     declaredPokemon: '你最唔鍾意嘅寶可夢',
     discoveredHeading: '大家揀出嚟最唔鍾意嘅寶可夢',
-    statsHeading: '邊啲寶可夢被揀做最唔鍾意',
+    statsHeading: 'Favmon 社群最唔鍾意寶可夢排名',
     topTen: '最唔受歡迎前 10 名',
     latest: '最新 10 則最唔鍾意選擇',
     chose: '揀做最唔鍾意',
@@ -1759,7 +1856,7 @@ const notFavouriteOverrides = {
     journeyContinues: '{count} / 1025 Pokémon apparaissent déjà dans la liste des moins favoris - on continue...',
     declaredPokemon: 'Votre Pokémon le moins favori',
     discoveredHeading: 'Pokémon choisis comme moins favoris',
-    statsHeading: 'L’avancement de la liste des moins favoris',
+    statsHeading: 'Classement des Pokémon moins favoris de la communauté Favmon',
     topTen: 'Top 10 des moins favoris',
     latest: '10 derniers choix de moins favori',
     chose: 'a choisi comme moins favori',
@@ -1823,6 +1920,7 @@ type PickerCopy = {
   resetBoard: string;
   codePlaceholder: string;
   copied: string;
+  exportFailed: string;
   imported: string;
   importError: string;
   emptySlot: string;
@@ -1872,6 +1970,7 @@ const pickerCopies: Record<'en' | 'ja' | 'ko' | 'zh-CN' | 'zh-TW' | 'zh-HK' | 'e
     resetBoard: 'Reset board',
     codePlaceholder: 'Paste a Favmon picker code here',
     copied: 'Copied.',
+    exportFailed: 'Copy failed. The code or link is in the field above—copy it manually.',
     imported: 'Imported.',
     importError: 'Could not read that picker code.',
     emptySlot: 'Choose a Pokémon',
@@ -1919,6 +2018,7 @@ const pickerCopies: Record<'en' | 'ja' | 'ko' | 'zh-CN' | 'zh-TW' | 'zh-HK' | 'e
     resetBoard: 'リセット',
     codePlaceholder: 'Favmon picker code を貼り付け',
     copied: 'コピーしました。',
+    exportFailed: 'コピーできませんでした。上の欄にコードまたはリンクを表示したので、手動でコピーしてください。',
     imported: '読み込みました。',
     importError: 'この picker code は読み込めません。',
     emptySlot: 'ポケモンを選ぶ',
@@ -1966,6 +2066,7 @@ const pickerCopies: Record<'en' | 'ja' | 'ko' | 'zh-CN' | 'zh-TW' | 'zh-HK' | 'e
     resetBoard: '보드 초기화',
     codePlaceholder: 'Favmon picker code 붙여넣기',
     copied: '복사했습니다.',
+    exportFailed: '복사하지 못했습니다. 위 입력란에 코드 또는 링크가 있으니 직접 복사해 주세요.',
     imported: '가져왔습니다.',
     importError: '이 picker code 를 읽을 수 없습니다.',
     emptySlot: '포켓몬 선택',
@@ -2013,6 +2114,7 @@ const pickerCopies: Record<'en' | 'ja' | 'ko' | 'zh-CN' | 'zh-TW' | 'zh-HK' | 'e
     resetBoard: '重置选择板',
     codePlaceholder: '把 Favmon picker code 粘贴到这里',
     copied: '已复制。',
+    exportFailed: '复制失败。代码或链接已放在上方输入框，请手动复制。',
     imported: '已导入。',
     importError: '无法读取这段 picker code。',
     emptySlot: '选择一只宝可梦',
@@ -2060,6 +2162,7 @@ const pickerCopies: Record<'en' | 'ja' | 'ko' | 'zh-CN' | 'zh-TW' | 'zh-HK' | 'e
     resetBoard: '重設選擇板',
     codePlaceholder: '把 Favmon picker code 貼到這裡',
     copied: '已複製。',
+    exportFailed: '複製失敗。代碼或連結已放在上方輸入框，請手動複製。',
     imported: '已匯入。',
     importError: '無法讀取這段 picker code。',
     emptySlot: '選擇一隻寶可夢',
@@ -2107,6 +2210,7 @@ const pickerCopies: Record<'en' | 'ja' | 'ko' | 'zh-CN' | 'zh-TW' | 'zh-HK' | 'e
     resetBoard: '重設選擇板',
     codePlaceholder: '將 Favmon picker code 貼喺呢度',
     copied: '已複製。',
+    exportFailed: '複製失敗。代碼或者連結已放喺上面個輸入框，請手動複製。',
     imported: '已匯入。',
     importError: '讀唔到呢段 picker code。',
     emptySlot: '揀一隻寶可夢',
@@ -2154,6 +2258,7 @@ const pickerCopies: Record<'en' | 'ja' | 'ko' | 'zh-CN' | 'zh-TW' | 'zh-HK' | 'e
     resetBoard: 'Reiniciar tablero',
     codePlaceholder: 'Pega un Favmon picker code aquí',
     copied: 'Copiado.',
+    exportFailed: 'No se pudo copiar. El código o enlace está en el campo de arriba; cópialo manualmente.',
     imported: 'Importado.',
     importError: 'No se pudo leer ese picker code.',
     emptySlot: 'Elige un Pokémon',
@@ -2201,6 +2306,7 @@ const pickerCopies: Record<'en' | 'ja' | 'ko' | 'zh-CN' | 'zh-TW' | 'zh-HK' | 'e
     resetBoard: 'Réinitialiser',
     codePlaceholder: 'Collez un Favmon picker code ici',
     copied: 'Copié.',
+    exportFailed: 'Échec de la copie. Le code ou le lien est dans le champ ci-dessus ; copiez-le manuellement.',
     imported: 'Importé.',
     importError: 'Impossible de lire ce picker code.',
     emptySlot: 'Choisir un Pokémon',
@@ -2236,6 +2342,34 @@ function copyFor(language: Language, mode: Mode): TranslationMessages {
 
 function template(copy: string, values: Record<string, string>): string {
   return copy.replace(/\{(\w+)\}/g, (match, key: string) => values[key] ?? match);
+}
+
+function currentFeedbackContext(
+  routeType: AnalyticsRouteType,
+  language: Language,
+  mode: Mode,
+  pokemonSlug?: string,
+): FeedbackContext {
+  const utmSource = new URLSearchParams(window.location.search).get('utm_source')?.trim() || undefined;
+  let referrer: string | undefined;
+  if (document.referrer) {
+    try {
+      const origin = new URL(document.referrer).origin;
+      if (origin !== 'null') referrer = origin;
+    } catch {
+      // Ignore malformed or non-web referrers rather than passing their raw value.
+    }
+  }
+
+  return {
+    page: window.location.pathname,
+    routeType,
+    language,
+    mode,
+    ...(pokemonSlug ? { pokemonSlug } : {}),
+    ...(referrer ? { referrer } : {}),
+    ...(utmSource ? { utmSource } : {}),
+  };
 }
 
 function normalizePokemonLookup(value: string): string {
@@ -3362,6 +3496,8 @@ export default function App() {
   );
   const [languageMenuOpen, setLanguageMenuOpen] = useState(false);
   const languageMenuRef = useRef<HTMLDivElement | null>(null);
+  const lastPageViewSignatureRef = useRef<string | null>(null);
+  const backendRequestGenerationRef = useRef(0);
   const t = useMemo(() => copyFor(language, mode), [language, mode]);
   const pickerCopy = useMemo(() => pickerCopyFor(language), [language]);
   const loading = pokemonLoading;
@@ -3397,31 +3533,41 @@ export default function App() {
     };
   }, [t.pokemonLoadFallback]);
 
-  useEffect(() => {
-    let alive = true;
+  const requestBackendData = useCallback(async (requestMode: Mode, clearExisting: boolean) => {
+    const requestGeneration = backendRequestGenerationRef.current + 1;
+    backendRequestGenerationRef.current = requestGeneration;
+    if (clearExisting) {
+      setStats([]);
+      setDeclarations([]);
+      setBackendError('');
+    }
     setBackendLoading(true);
-    loadBackendData(mode)
-      .then((payload) => {
-        if (alive) {
-          setStats(payload.stats);
-          setDeclarations(payload.latest);
-          setBackendError('');
-        }
-      })
-      .catch((error: unknown) => {
-        if (alive) {
-          setStats([]);
-          setDeclarations([]);
-          setBackendError(error instanceof Error ? error.message : t.backendLoadFallback);
-        }
-      })
-      .finally(() => {
-        if (alive) setBackendLoading(false);
-      });
+    try {
+      const payload = await loadBackendData(requestMode, { throwOnError: true });
+      if (backendRequestGenerationRef.current !== requestGeneration) return;
+      setStats(payload.stats);
+      setDeclarations(payload.latest);
+      setBackendError('');
+    } catch (error: unknown) {
+      if (backendRequestGenerationRef.current !== requestGeneration) return;
+      setBackendError(error instanceof Error ? error.message : t.backendLoadFallback);
+    } finally {
+      if (backendRequestGenerationRef.current === requestGeneration) {
+        setBackendLoading(false);
+      }
+    }
+  }, [t.backendLoadFallback]);
+
+  useEffect(() => {
+    void requestBackendData(mode, true);
     return () => {
-      alive = false;
+      backendRequestGenerationRef.current += 1;
     };
-  }, [mode, t.backendLoadFallback]);
+  }, [mode, requestBackendData]);
+
+  const refreshBackendData = useCallback(async () => {
+    await requestBackendData(mode, false);
+  }, [mode, requestBackendData]);
 
   useEffect(() => {
     const onPop = () => setLocationState(routeAndLanguageFromPathname(window.location.pathname));
@@ -3533,7 +3679,36 @@ export default function App() {
     syncStructuredData(route, language, seo, faq, canonicalUrl);
   }, [route, language, declarationId, pokemonSlug, t]);
 
+  useEffect(() => {
+    const pageUrl = new URL(window.location.href);
+    pageUrl.searchParams.delete('board');
+    pageUrl.hash = '';
+
+    const pageView = {
+      pageLocation: pageUrl.href,
+      pagePath: `${pageUrl.pathname}${pageUrl.search}`,
+      pageTitle: document.title,
+      language,
+      routeType: analyticsRouteTypeByRoute[route],
+    };
+    const signature = JSON.stringify(pageView);
+    if (lastPageViewSignatureRef.current === signature) return;
+
+    lastPageViewSignatureRef.current = signature;
+    trackPageView(pageView);
+  }, [route, language, declarationId, pokemonSlug]);
+
   const displayPokemon = useMemo(() => mergePokemonStats(pokemon, stats), [pokemon, stats]);
+  const feedbackFormId = import.meta.env.VITE_TALLY_FEEDBACK_FORM_ID;
+  const feedbackPokemonSlug = route === '/pokemon' && pokemonSlug
+    ? findPokemonBySlugOrId(displayPokemon, pokemonSlug)?.slug
+    : undefined;
+  const globalFeedbackContext = currentFeedbackContext(
+    analyticsRouteTypeByRoute[route],
+    language,
+    mode,
+    feedbackPokemonSlug,
+  );
   const activeLocaleOption = localeOptions.find((option) => option.code === language) ?? localeOptions[0];
 
   function handleDeclarationSubmitted(declaration: Declaration) {
@@ -3560,6 +3735,7 @@ export default function App() {
   }
 
   function toggleMode() {
+    backendRequestGenerationRef.current += 1;
     setMode((current) => (current === 'favourite' ? 'not_favourite' : 'favourite'));
   }
 
@@ -3667,13 +3843,16 @@ export default function App() {
             declarations={declarations}
             mode={mode}
             language={language}
+            feedbackFormId={feedbackFormId}
             t={t}
             onSubmitted={handleDeclarationSubmitted}
           />
         )}
         {route === '/picker' && <PickerPage pokemon={displayPokemon} loading={loading} language={language} t={t} />}
         {route === '/game' && <GamePage pokemon={displayPokemon} mode={mode} language={language} t={t} />}
-        {route === '/explore' && <ExplorePage declarations={declarations} language={language} t={t} />}
+        {route === '/explore' && (
+          <ExplorePage pokemon={displayPokemon} declarations={declarations} language={language} t={t} />
+        )}
         {route === '/pokedex' && (
           <PokedexPage pokemon={displayPokemon} mode={mode} language={language} loading={loading} t={t} />
         )}
@@ -3681,9 +3860,11 @@ export default function App() {
           <StatsPage
             pokemon={displayPokemon}
             declarations={declarations}
+            mode={mode}
             language={language}
             loading={loading}
             dataPending={backendLoading}
+            onRefresh={refreshBackendData}
             t={t}
           />
         )}
@@ -3707,6 +3888,13 @@ export default function App() {
           />
         )}
       </main>
+
+      <FeedbackButton
+        formId={feedbackFormId}
+        label={t.feedback}
+        failureMessage={t.feedbackFailed}
+        context={globalFeedbackContext}
+      />
 
       {route !== '/game' && route !== '/explore' && <Footer t={t} />}
     </>
@@ -3743,6 +3931,7 @@ function DeclarePage({
   declarations,
   mode,
   language,
+  feedbackFormId,
   t,
   onSubmitted,
 }: {
@@ -3751,6 +3940,7 @@ function DeclarePage({
   declarations: Declaration[];
   mode: Mode;
   language: Language;
+  feedbackFormId?: string;
   t: TranslationMessages;
   onSubmitted: (declaration: Declaration) => void;
 }) {
@@ -3789,6 +3979,7 @@ function DeclarePage({
       })
       .slice(0, 8);
   }, [pokemon, query]);
+  const pokemonById = useMemo(() => new Map(pokemon.map((row) => [row.id, row])), [pokemon]);
 
   const heroPokemon = useMemo<ShowcasePokemon | null>(() => {
     if (selected) return selected;
@@ -3796,6 +3987,11 @@ function DeclarePage({
     return pokemon.find((row) => row.id === submittedSummary.declaration.pokemonId) ??
       declarationToShowcasePokemon(submittedSummary.declaration);
   }, [pokemon, selected, submittedSummary]);
+  const submittedPokemonSlug = selected?.slug ?? (
+    submittedSummary
+      ? pokemon.find((row) => row.id === submittedSummary.declaration.pokemonId)?.slug
+      : undefined
+  );
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -3817,6 +4013,15 @@ function DeclarePage({
         fanCount: result.fanCount,
         revealedCount: result.revealedCount,
       };
+      trackEvent('declaration_submit_success', {
+        pokemon_id: selected.id,
+        pokemon_slug: selected.slug,
+        mode,
+        language,
+        source_page: 'home',
+        fan_count: result.fanCount,
+        revealed_count: result.revealedCount,
+      });
       markDeclaredOnDevice(mode, summary);
       setAlreadyDeclared(true);
       setSubmittedSummary(summary);
@@ -3857,7 +4062,15 @@ function DeclarePage({
       </div>
 
       {alreadyDeclared ? (
-        <DeclarationSuccessPanel id="trainer-terminal" summary={submittedSummary} language={language} t={t} />
+        <DeclarationSuccessPanel
+          id="trainer-terminal"
+          summary={submittedSummary}
+          language={language}
+          mode={mode}
+          pokemonSlug={submittedPokemonSlug}
+          feedbackFormId={feedbackFormId}
+          t={t}
+        />
       ) : (
         <form id="trainer-terminal" className="declaration-form trainer-console" onSubmit={submit}>
           <div className="trainer-console-header">
@@ -3956,7 +4169,15 @@ function DeclarePage({
             <div>
               <strong>{declaration.trainerName}</strong>
               <span>
-                {t.chose} {declaration.pokemonName}
+                {t.chose}{' '}
+                {pokemonById.has(declaration.pokemonId) ? (
+                  <a
+                    className="pokemon-detail-link"
+                    href={localizedPokemonPath(pokemonById.get(declaration.pokemonId)!.slug, language)}
+                  >
+                    {declaration.pokemonName}
+                  </a>
+                ) : declaration.pokemonName}
               </span>
               <p>{declaration.reason}</p>
             </div>
@@ -3998,11 +4219,17 @@ function DeclarationSuccessPanel({
   id,
   summary,
   language,
+  mode,
+  pokemonSlug,
+  feedbackFormId,
   t,
 }: {
   id?: string;
   summary: LocalDeclarationSummary | null;
   language: Language;
+  mode: Mode;
+  pokemonSlug?: string;
+  feedbackFormId?: string;
   t: TranslationMessages;
 }) {
   const declaration = summary?.declaration;
@@ -4051,7 +4278,19 @@ function DeclarationSuccessPanel({
 
           <div className="success-share-column">
             <p className="success-note">{t.instagramChangeFormMsg}</p>
-            <PokemonCardDownloader declaration={declaration} language={language} t={t} />
+            <PokemonCardDownloader
+              declaration={declaration}
+              language={language}
+              sourcePage="declaration_success"
+              t={t}
+            />
+            <FeedbackButton
+              formId={feedbackFormId}
+              label={t.feedbackSuccess}
+              failureMessage={t.feedbackFailed}
+              context={currentFeedbackContext('home', language, mode, pokemonSlug)}
+              variant="contextual"
+            />
           </div>
         </div>
       ) : (
@@ -4354,10 +4593,12 @@ function PokemonDetailPage({
 function PokemonCardDownloader({
   declaration,
   language,
+  sourcePage,
   t,
 }: {
   declaration: Declaration;
   language: Language;
+  sourcePage: 'declaration_success' | 'declaration_detail';
   t: TranslationMessages;
 }) {
   const [artStyle, setArtStyle] = useState<CardArtStyle>('official');
@@ -4433,11 +4674,35 @@ function PokemonCardDownloader({
     target.appendChild(previewCanvas);
   }, [canvases, format]);
 
+  function shareAnalyticsContext() {
+    return {
+      pokemon_id: declaration.pokemonId,
+      pokemon_slug: normalizePokemonLookup(declaration.pokemonName),
+      mode: declaration.mode,
+      language,
+      source_page: sourcePage,
+    };
+  }
+
+  function trackShareLink(method: 'native' | 'copy_link' | 'copy_text' | 'platform_intent', platform?: string) {
+    trackEvent('share_link_click', {
+      ...shareAnalyticsContext(),
+      method,
+      ...(platform ? { platform } : {}),
+    });
+  }
+
   function handleDownload(nextFormat: CardFormatKey) {
     setFormat(nextFormat);
     const canvas = canvases[nextFormat];
     if (!canvas) return;
     downloadCard(canvas, declaration.pokemonName, nextFormat, shiny);
+    trackEvent('share_card_download', {
+      ...shareAnalyticsContext(),
+      card_format: nextFormat,
+      art_style: artStyle,
+      shiny,
+    });
     setDownloaded((current) => ({ ...current, [nextFormat]: true }));
     window.setTimeout(() => {
       setDownloaded((current) => ({ ...current, [nextFormat]: false }));
@@ -4480,27 +4745,44 @@ function PokemonCardDownloader({
         if (!sharedWithFile) {
           await navigator.share(textPayload);
         }
+        trackShareLink('native');
         flashShareStatus(t.shareOpened);
         return;
       }
 
       await copyTextToClipboard(`${shareIntent.text}\n${shareIntent.url}`);
+      trackShareLink('copy_text');
       flashShareStatus(t.shareFallbackCopied);
     } catch (shareError) {
       if (shareError instanceof DOMException && shareError.name === 'AbortError') return;
-      await copyTextToClipboard(`${shareIntent.text}\n${shareIntent.url}`);
-      flashShareStatus(t.shareFallbackCopied);
+      try {
+        await copyTextToClipboard(`${shareIntent.text}\n${shareIntent.url}`);
+        trackShareLink('copy_text');
+        flashShareStatus(t.shareFallbackCopied);
+      } catch {
+        flashShareStatus(t.shareFailed);
+      }
     }
   }
 
   async function handleCopyLink() {
-    await copyTextToClipboard(shareIntent.url);
-    flashShareStatus(t.shareCopied);
+    try {
+      await copyTextToClipboard(shareIntent.url);
+      trackShareLink('copy_link');
+      flashShareStatus(t.shareCopied);
+    } catch {
+      flashShareStatus(t.shareFailed);
+    }
   }
 
   async function handleCopyText() {
-    await copyTextToClipboard(`${shareIntent.text}\n${shareIntent.url}`);
-    flashShareStatus(t.shareCopied);
+    try {
+      await copyTextToClipboard(`${shareIntent.text}\n${shareIntent.url}`);
+      trackShareLink('copy_text');
+      flashShareStatus(t.shareCopied);
+    } catch {
+      flashShareStatus(t.shareFailed);
+    }
   }
 
   return (
@@ -4613,6 +4895,7 @@ function PokemonCardDownloader({
               href={platform.buildHref(shareIntent)}
               target={platform.key === 'email' ? undefined : '_blank'}
               rel={platform.key === 'email' ? undefined : 'noopener noreferrer'}
+              onClick={() => trackShareLink('platform_intent', platform.key)}
             >
               <span className="share-platform-badge">{platform.badge}</span>
               <span className="share-platform-name">{platform.label}</span>
@@ -4796,21 +5079,30 @@ function DeclarationDetailPage({
       </div>
 
       <div className="declaration-result-share">
-        <PokemonCardDownloader declaration={declaration} language={language} t={t} />
+        <PokemonCardDownloader
+          declaration={declaration}
+          language={language}
+          sourcePage="declaration_detail"
+          t={t}
+        />
       </div>
     </section>
   );
 }
 
 function ExplorePage({
+  pokemon,
   declarations,
   language,
   t,
 }: {
+  pokemon: PokemonRow[];
   declarations: Declaration[];
   language: Language;
   t: TranslationMessages;
 }) {
+  const pokemonById = useMemo(() => new Map(pokemon.map((row) => [row.id, row])), [pokemon]);
+
   return (
     <section className="page explore-page">
       <div className="explore-page-heading sr-only">
@@ -4872,7 +5164,16 @@ function ExplorePage({
                 name={declaration.pokemonName}
               />
               <h2 className="reel-trainer">{declaration.trainerName}</h2>
-              <p className="reel-pokemon-name">{declaration.pokemonName}</p>
+              <p className="reel-pokemon-name">
+                {pokemonById.has(declaration.pokemonId) ? (
+                  <a
+                    className="pokemon-detail-link"
+                    href={localizedPokemonPath(pokemonById.get(declaration.pokemonId)!.slug, language)}
+                  >
+                    {declaration.pokemonName}
+                  </a>
+                ) : declaration.pokemonName}
+              </p>
               <p className="reel-reason">"{declaration.reason}"</p>
               <p className="reel-meta">{new Date(declaration.createdAt).toLocaleDateString(language)}</p>
             </div>
@@ -5168,13 +5469,24 @@ function PickerPage({
     });
   }
 
+  function trackPickerExport(exportMethod: 'clipboard_code' | 'clipboard_link' | 'native') {
+    trackEvent('picker_export', {
+      language,
+      export_method: exportMethod,
+      filled_slots: filledSlots,
+      team_filled: teamFilled,
+      shiny,
+    });
+  }
+
   async function copyBoardCode() {
     setImportCode(exportCode);
     try {
       await copyTextToClipboard(exportCode);
+      trackPickerExport('clipboard_code');
       flashStatus(copy.copied);
     } catch {
-      flashStatus(copy.copied);
+      flashStatus(copy.exportFailed);
     }
   }
 
@@ -5190,20 +5502,24 @@ function PickerPage({
     try {
       if (navigator.share) {
         await navigator.share(sharePayload);
+        trackPickerExport('native');
         flashStatus(copy.shareOpened);
         return;
       }
 
       await copyTextToClipboard(shareUrl);
+      trackPickerExport('clipboard_link');
       flashStatus(copy.copied);
     } catch (shareError) {
       if (shareError instanceof DOMException && shareError.name === 'AbortError') return;
       try {
         await copyTextToClipboard(shareUrl);
+        trackPickerExport('clipboard_link');
+        flashStatus(copy.copied);
       } catch {
         setImportCode(shareUrl);
+        flashStatus(copy.exportFailed);
       }
-      flashStatus(copy.copied);
     }
   }
 
@@ -5708,29 +6024,42 @@ function PokedexPage({
 function StatsPage({
   pokemon,
   declarations,
+  mode,
   language,
   loading,
   dataPending,
+  onRefresh,
   t,
 }: {
   pokemon: PokemonRow[];
   declarations: Declaration[];
+  mode: Mode;
   language: Language;
   loading: boolean;
   dataPending: boolean;
+  onRefresh: () => Promise<void>;
   t: TranslationMessages;
 }) {
   const [refreshing, setRefreshing] = useState(false);
   const [expandedGeneration, setExpandedGeneration] = useState(true);
   const [expandedType, setExpandedType] = useState(true);
-  const sorted = useMemo(() => [...pokemon].sort((a, b) => b.votes - a.votes), [pokemon]);
+  const rankedPokemon = useMemo(
+    () => pokemon.filter((row) => row.votes > 0).sort((a, b) => b.votes - a.votes),
+    [pokemon],
+  );
+  const pokemonById = useMemo(() => new Map(pokemon.map((row) => [row.id, row])), [pokemon]);
   const unique = pokemon.filter((row) => row.votes > 0).length;
   const totalVotes = pokemon.reduce((sum, row) => sum + row.votes, 0);
   const coverage = pokemon.length ? (unique / pokemon.length) * 100 : 0;
 
-  function refresh() {
+  async function refresh() {
+    if (refreshing || dataPending) return;
     setRefreshing(true);
-    window.setTimeout(() => setRefreshing(false), 550);
+    try {
+      await onRefresh();
+    } finally {
+      setRefreshing(false);
+    }
   }
 
   const generationRows = allGenerations().map((item) => ({
@@ -5761,9 +6090,12 @@ function StatsPage({
         <div>
           <p className="eyebrow">{t.stats}</p>
           <h1>{t.statsHeading}</h1>
+          <p className="stats-mode-summary">
+            {mode === 'favourite' ? t.statsModeFavourite : t.statsModeLeastFavourite}
+          </p>
           <PokemonAssetStrip className="league-sprite-strip" />
         </div>
-        <button className="secondary-button" type="button" onClick={refresh} disabled={refreshing}>
+        <button className="secondary-button" type="button" onClick={refresh} disabled={refreshing || dataPending}>
           {refreshing ? t.refreshing : t.refresh}
         </button>
       </div>
@@ -5800,9 +6132,33 @@ function StatsPage({
             </article>
           </div>
 
+          <section className="stats-methodology" aria-labelledby="stats-sample-heading">
+            <h2 id="stats-sample-heading">{t.statsSampleHeading}</h2>
+            <p>
+              {template(t.statsSampleSummary, {
+                total: totalVotes.toLocaleString(language),
+                unique: unique.toLocaleString(language),
+                pokedex: pokemon.length.toLocaleString(language),
+              })}
+            </p>
+            <p>{t.statsCommunitySource}</p>
+            <p>{t.statsPokeApiSource}</p>
+            <p>{t.statsRefreshSummary}</p>
+          </section>
+
           <section className="stats-section stats-section--chart" id="stats-top-ten">
             <h2>{t.topTen}</h2>
-            <BarChart rows={sorted.slice(0, 10).map((row) => ({ ...row, label: row.name }))} />
+            {rankedPokemon.length > 0 ? (
+              <BarChart
+                rows={rankedPokemon.slice(0, 10).map((row) => ({
+                  ...row,
+                  label: row.name,
+                  href: localizedPokemonPath(row.slug, language),
+                }))}
+              />
+            ) : (
+              <p className="empty-state">{t.statsNoRankedPokemon}</p>
+            )}
           </section>
 
           <section className="stats-section stats-section--chart" id="stats-generation">
@@ -5829,7 +6185,8 @@ function StatsPage({
 
           <section className="stats-section stats-section--ranking" id="stats-ranking">
             <h2>{t.fullRanking}</h2>
-            <div className="table-wrap">
+            {rankedPokemon.length > 0 ? (
+              <div className="table-wrap">
               <table>
                 <thead>
                   <tr>
@@ -5839,21 +6196,24 @@ function StatsPage({
                   </tr>
                 </thead>
                 <tbody>
-                  {sorted.slice(0, 25).map((row, index) => (
+                  {rankedPokemon.slice(0, 25).map((row, index) => (
                     <tr key={row.id}>
                       <td>#{index + 1}</td>
                       <td>
-                        <span className="table-pokemon">
+                        <a className="table-pokemon pokemon-detail-link" href={localizedPokemonPath(row.slug, language)}>
                           <img src={row.sprite} alt="" width={48} height={48} loading="lazy" decoding="async" />
                           {row.name}
-                        </span>
+                        </a>
                       </td>
                       <td>{row.votes}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-            </div>
+              </div>
+            ) : (
+              <p className="empty-state">{t.statsNoRankedPokemon}</p>
+            )}
           </section>
 
           <section className="stats-section stats-section--latest" id="stats-latest">
@@ -5865,7 +6225,15 @@ function StatsPage({
                   <div>
                     <strong>{declaration.trainerName}</strong>
                     <span>
-                      {t.chose} {declaration.pokemonName}
+                      {t.chose}{' '}
+                      {pokemonById.has(declaration.pokemonId) ? (
+                        <a
+                          className="pokemon-detail-link"
+                          href={localizedPokemonPath(pokemonById.get(declaration.pokemonId)!.slug, language)}
+                        >
+                          {declaration.pokemonName}
+                        </a>
+                      ) : declaration.pokemonName}
                     </span>
                     <p>{declaration.reason}</p>
                   </div>
@@ -5904,6 +6272,16 @@ function GamePage({
     if (!pair || revealing) return;
     const other = pair.find((item) => item.id !== row.id)!;
     const correct = mode === 'favourite' ? row.votes >= other.votes : row.votes >= other.votes;
+    const streakAfter = correct ? streak + 1 : streak;
+    trackEvent('game_round_complete', {
+      mode,
+      language,
+      correct,
+      streak_before: streak,
+      streak_after: streakAfter,
+      selected_pokemon_id: row.id,
+      opponent_pokemon_id: other.id,
+    });
     setSelectedId(row.id);
     setRevealing(true);
     window.setTimeout(() => {
@@ -6078,7 +6456,7 @@ function GameCard({
   );
 }
 
-function BarChart({ rows }: { rows: Array<{ label: string; votes: number; sprite?: string }> }) {
+function BarChart({ rows }: { rows: Array<{ label: string; votes: number; sprite?: string; href?: string }> }) {
   const max = Math.max(1, ...rows.map((row) => row.votes));
   return (
     <div className="bar-chart">
@@ -6086,7 +6464,11 @@ function BarChart({ rows }: { rows: Array<{ label: string; votes: number; sprite
         <div className="bar-row" key={row.label}>
           <div className="bar-label">
             {row.sprite && <img src={row.sprite} alt="" width={48} height={48} loading="lazy" decoding="async" />}
-            <span>{row.label}</span>
+            {row.href ? (
+              <a className="pokemon-detail-link" href={row.href}>{row.label}</a>
+            ) : (
+              <span>{row.label}</span>
+            )}
           </div>
           <div className="bar-track">
             <div className="bar-fill" style={{ width: `${(row.votes / max) * 100}%` }} />
