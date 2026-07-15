@@ -123,6 +123,8 @@ describe('declaration submission safety', () => {
 
     const rateLimitKey = sharedMocks.sql.mock.calls[0][1];
     const networkRateLimitKey = sharedMocks.sql.mock.calls[0][2];
+    const rateLimitQuery = sharedMocks.sql.mock.calls[0][0].join(' ');
+    expect(rateLimitQuery).toMatch(/returning\s+key_hash,\s*attempt_count,\s*window_started_at/i);
     expect(rateLimitKey).toMatch(/^[a-f0-9]{64}$/);
     expect(networkRateLimitKey).toMatch(/^[a-f0-9]{64}$/);
     expect(rateLimitKey).not.toBe(networkRateLimitKey);
