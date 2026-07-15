@@ -9,7 +9,8 @@ type HeaderValue = string | string[] | undefined;
 export type RequestHeaders = Record<string, HeaderValue>;
 
 export function createSubmissionFingerprints(headers: RequestHeaders = {}) {
-  const clientAddress = firstHeaderValue(headers, 'x-vercel-forwarded-for')
+  const clientAddress = firstHeaderValue(headers, 'cf-connecting-ip')
+    ?? firstHeaderValue(headers, 'x-vercel-forwarded-for')
     ?? firstHeaderValue(headers, 'x-forwarded-for')
     ?? firstHeaderValue(headers, 'x-real-ip');
   const userAgent = firstHeaderValue(headers, 'user-agent') ?? 'unknown-agent';
