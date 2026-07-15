@@ -3948,6 +3948,7 @@ function DeclarePage({
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<PokemonRow | null>(null);
   const [reason, setReason] = useState('');
+  const [website, setWebsite] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [alreadyDeclared, setAlreadyDeclared] = useState(() => hasDeclaredOnDevice(mode));
@@ -4007,6 +4008,7 @@ function DeclarePage({
         pokemonName: selected.name,
         reason: reason.trim(),
         mode,
+        website,
       });
       const summary = {
         declaration: result.declaration,
@@ -4073,6 +4075,16 @@ function DeclarePage({
         />
       ) : (
         <form id="trainer-terminal" className="declaration-form trainer-console" onSubmit={submit}>
+          <label className="sr-only" aria-hidden="true">
+            Website
+            <input
+              name="website"
+              value={website}
+              onChange={(event) => setWebsite(event.target.value.slice(0, 200))}
+              autoComplete="off"
+              tabIndex={-1}
+            />
+          </label>
           <div className="trainer-console-header">
             <span>{t.trainerTerminal}</span>
             <strong>{mode === 'favourite' ? t.favouriteFile : t.rivalFile}</strong>

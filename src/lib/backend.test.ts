@@ -81,6 +81,7 @@ describe('backend API client', () => {
       pokemonName: 'Mimikyu',
       reason: 'This came from Neon',
       mode: 'favourite',
+      website: '',
     });
 
     expect(result.declaration.id).toBe('server-id');
@@ -93,6 +94,8 @@ describe('backend API client', () => {
         headers: { 'Content-Type': 'application/json' },
       }),
     );
+    const requestBody = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(requestBody).toMatchObject({ website: '' });
   });
 
   it('loads modal declarations by pokemon and mode', async () => {

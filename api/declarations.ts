@@ -1,9 +1,17 @@
 import { normalizeMode, sanitizeText, sendJson, sql, toDeclaration } from './_shared.js';
+import {
+  createSubmissionFingerprints,
+  DECLARATION_CLIENT_RATE_LIMIT_MAX_ATTEMPTS,
+  DECLARATION_NETWORK_RATE_LIMIT_MAX_ATTEMPTS,
+  DECLARATION_RATE_LIMIT_WINDOW_MINUTES,
+  type RequestHeaders,
+} from './declaration-safety.js';
 
 type RequestLike = {
   method?: string;
   query: Record<string, unknown>;
   body?: unknown;
+  headers?: RequestHeaders;
 };
 
 type ResponseLike = {
@@ -99,6 +107,69 @@ async function readDeclarationById(declarationId: string, response: ResponseLike
 
 async function createDeclaration(request: RequestLike, response: ResponseLike) {
   const body = typeof request.body === 'object' && request.body ? request.body as Record<string, unknown> : {};
+  const { clientKey, networkKey } = createSubmissionFingerprints(request.headers);
+  const rateLimitRows = await sql`
+    with expired as (
+      delete from declaration_rate_limits
+      where key_hash in (
+        select key_hash
+        from declaration_rate_limits
+        where updated_at < now() - interval '1 day'
+        order by updated_at
+        limit 100
+      )
+    ), current_limit as (
+      insert into declaration_rate_limits (key_hash, window_started_at, attempt_count, updated_at)
+      values
+        (${clientKey}, now(), 1, now()),
+        (${networkKey}, now(), 1, now())
+      on conflict (key_hash) do update
+      set
+        window_started_at = case
+          when declaration_rate_limits.window_started_at <= now() - (${DECLARATION_RATE_LIMIT_WINDOW_MINUTES} * interval '1 minute')
+            then now()
+          else declaration_rate_limits.window_started_at
+        end,
+        attempt_count = case
+          when declaration_rate_limits.window_started_at <= now() - (${DECLARATION_RATE_LIMIT_WINDOW_MINUTES} * interval '1 minute')
+            then 1
+          else declaration_rate_limits.attempt_count + 1
+        end,
+        updated_at = now()
+      returning attempt_count, window_started_at
+    )
+    select
+      key_hash,
+      attempt_count::integer,
+      greatest(
+        1,
+        ceil(extract(epoch from (
+          window_started_at + (${DECLARATION_RATE_LIMIT_WINDOW_MINUTES} * interval '1 minute') - now()
+        )))::integer
+      ) as retry_after_seconds
+    from current_limit
+  `;
+  const blockedLimits = rateLimitRows.filter((row) => {
+    const maxAttempts = row.key_hash === networkKey
+      ? DECLARATION_NETWORK_RATE_LIMIT_MAX_ATTEMPTS
+      : DECLARATION_CLIENT_RATE_LIMIT_MAX_ATTEMPTS;
+    return Number(row.attempt_count) > maxAttempts;
+  });
+  if (blockedLimits.length > 0) {
+    const retryAfterSeconds = Math.max(
+      1,
+      ...blockedLimits.map((row) => Number(row.retry_after_seconds) || 1),
+    );
+    response.setHeader('Retry-After', String(retryAfterSeconds));
+    return sendJson(response, 429, {
+      error: 'Too many declaration attempts. Please try again later.',
+    });
+  }
+
+  if (sanitizeText(body.website, 200)) {
+    return sendJson(response, 400, { error: 'Unable to submit declaration.' });
+  }
+
   const mode = normalizeMode(body.mode);
   const trainerName = sanitizeText(body.trainerName, 80);
   const pokemonName = sanitizeText(body.pokemonName, 120);
