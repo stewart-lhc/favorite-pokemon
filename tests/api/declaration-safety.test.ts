@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createSubmissionFingerprints } from './declaration-safety';
+import { createSubmissionFingerprints } from '../../api/declaration-safety';
 
 describe('declaration submission fingerprint', () => {
   afterEach(() => {

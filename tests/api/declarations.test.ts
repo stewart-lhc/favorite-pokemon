@@ -10,12 +10,12 @@ const sharedMocks = vi.hoisted(() => {
   };
 });
 
-vi.mock('./_shared.js', async (importOriginal) => ({
-  ...await importOriginal<typeof import('./_shared.js')>(),
+vi.mock('../../api/_shared.js', async (importOriginal) => ({
+  ...await importOriginal<typeof import('../../api/_shared.js')>(),
   sql: sharedMocks.sql,
 }));
 
-import handler from './declarations';
+import handler from '../../api/declarations';
 
 const validBody = {
   trainerName: 'Ari',
