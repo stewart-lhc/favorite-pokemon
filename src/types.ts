@@ -70,9 +70,10 @@ export type DeclarationInput = {
   pokemonName: string;
   reason: string;
   mode: Mode;
+  website?: string;
 };
 
-export type Declaration = DeclarationInput & {
+export type Declaration = Omit<DeclarationInput, 'website'> & {
   id: string;
   createdAt: string;
 };

@@ -115,9 +115,7 @@ function eventParameters(gtag: ReturnType<typeof vi.fn>, eventName: string) {
 }
 
 function stubDeclarationFetch({ succeeds = true }: { succeeds?: boolean } = {}) {
-  vi.stubGlobal(
-    'fetch',
-    vi.fn((input: RequestInfo | URL) => {
+  const fetchMock = vi.fn((input: RequestInfo | URL, _init?: RequestInit) => {
       const url = String(input);
       if (url === '/api/declarations') {
         if (!succeeds) {
@@ -154,8 +152,9 @@ function stubDeclarationFetch({ succeeds = true }: { succeeds?: boolean } = {}) 
         ok: true,
         json: async () => pokemonData,
       });
-    }),
-  );
+    });
+  vi.stubGlobal('fetch', fetchMock);
+  return fetchMock;
 }
 
 async function submitPikachuDeclaration(user: ReturnType<typeof userEvent.setup>) {
@@ -1356,7 +1355,7 @@ describe('Favorite Pokemon clone', () => {
   });
 
   it('tracks exactly one declaration success after the backend save resolves without leaking declaration content', async () => {
-    stubDeclarationFetch();
+    const fetchMock = stubDeclarationFetch();
     const gtag = vi.fn();
     window.gtag = gtag;
 
@@ -1365,6 +1364,9 @@ describe('Favorite Pokemon clone', () => {
     await submitPikachuDeclaration(user);
 
     await screen.findByRole('heading', { name: 'Declaration saved. That Pokémon has someone now.' });
+    const declarationRequest = fetchMock.mock.calls.find(([input]) => String(input) === '/api/declarations');
+    expect(declarationRequest).toBeDefined();
+    expect(JSON.parse(String(declarationRequest?.[1]?.body))).toMatchObject({ website: '' });
     expect(eventParameters(gtag, 'declaration_submit_success')).toEqual([{
       pokemon_id: 25,
       pokemon_slug: 'pikachu',
@@ -1378,6 +1380,24 @@ describe('Favorite Pokemon clone', () => {
     expect(serializedEvent).not.toContain('Ari');
     expect(serializedEvent).not.toContain('forever');
     expect(serializedEvent).not.toContain('posted-1');
+  });
+
+  it('includes a bot-filled honeypot value in the declaration request', async () => {
+    const fetchMock = stubDeclarationFetch();
+    const user = userEvent.setup();
+    render(<App />);
+    await screen.findByRole('heading', { name: /Every Pokémon is/i });
+
+    const honeypot = document.querySelector<HTMLInputElement>('input[name="website"]');
+    expect(honeypot).not.toBeNull();
+    fireEvent.change(honeypot!, { target: { value: 'https://spam.example' } });
+    await submitPikachuDeclaration(user);
+
+    const declarationRequest = fetchMock.mock.calls.find(([input]) => String(input) === '/api/declarations');
+    expect(declarationRequest).toBeDefined();
+    expect(JSON.parse(String(declarationRequest?.[1]?.body))).toMatchObject({
+      website: 'https://spam.example',
+    });
   });
 
   it('does not track declaration success when the backend rejects the declaration', async () => {
