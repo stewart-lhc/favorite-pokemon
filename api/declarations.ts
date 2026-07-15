@@ -136,7 +136,7 @@ async function createDeclaration(request: RequestLike, response: ResponseLike) {
           else declaration_rate_limits.attempt_count + 1
         end,
         updated_at = now()
-      returning attempt_count, window_started_at
+      returning key_hash, attempt_count, window_started_at
     )
     select
       key_hash,
