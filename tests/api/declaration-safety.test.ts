@@ -6,27 +6,41 @@ describe('declaration submission fingerprint', () => {
     vi.unstubAllEnvs();
   });
 
-  it('isolates IPv4 clients and prefers the Vercel forwarding header', () => {
+  it('isolates IPv4 clients and prefers the Cloudflare client header', () => {
     vi.stubEnv('RATE_LIMIT_SALT', 'test-rate-limit-salt');
     const first = createSubmissionFingerprints({
-      'x-vercel-forwarded-for': '203.0.113.42',
-      'x-forwarded-for': '198.51.100.9',
+      'cf-connecting-ip': '203.0.113.42',
+      'x-vercel-forwarded-for': '198.51.100.9',
       'user-agent': 'Browser A',
     });
     const sameTrustedClient = createSubmissionFingerprints({
-      'x-vercel-forwarded-for': '203.0.113.42',
-      'x-forwarded-for': '192.0.2.10',
+      'cf-connecting-ip': '203.0.113.42',
+      'x-vercel-forwarded-for': '192.0.2.10',
       'user-agent': 'Browser A',
     });
     const otherClient = createSubmissionFingerprints({
-      'x-vercel-forwarded-for': '203.0.113.43',
-      'x-forwarded-for': '198.51.100.9',
+      'cf-connecting-ip': '203.0.113.43',
+      'x-vercel-forwarded-for': '198.51.100.9',
       'user-agent': 'Browser A',
     });
 
     expect(first).toEqual(sameTrustedClient);
     expect(first.clientKey).not.toBe(otherClient.clientKey);
     expect(first.networkKey).not.toBe(otherClient.networkKey);
+  });
+
+  it('falls back to the Vercel forwarding header without Cloudflare', () => {
+    vi.stubEnv('RATE_LIMIT_SALT', 'test-rate-limit-salt');
+    const first = createSubmissionFingerprints({
+      'x-vercel-forwarded-for': '203.0.113.42',
+      'x-forwarded-for': '198.51.100.9',
+    });
+    const sameTrustedClient = createSubmissionFingerprints({
+      'x-vercel-forwarded-for': '203.0.113.42',
+      'x-forwarded-for': '192.0.2.10',
+    });
+
+    expect(first).toEqual(sameTrustedClient);
   });
 
   it('separates clients behind one shared network while retaining a network-wide bucket', () => {
