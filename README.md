@@ -1,6 +1,8 @@
 # Favorite Pokemon
 
-Favmon 是一个独立的 Pokemon 社区声明网站，当前 canonical 域名为 `https://favmon.com/`。
+Favmon 是一个独立、非官方的 Pokémon 社区图鉴：用户可以声明最喜欢或最不喜欢的 Pokémon、比较实时社区排名，并生成可分享的训练家卡片。当前 canonical 域名为 `https://favmon.com/`。
+
+Favmon 是 fan-made project，与 Nintendo 或 The Pokémon Company 无关联，也未获得其背书。
 
 ## 功能
 

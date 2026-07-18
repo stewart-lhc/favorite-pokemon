@@ -1,5 +1,10 @@
 export type AnalyticsEventName =
+  | 'declaration_start'
+  | 'pokemon_selected'
   | 'declaration_submit_success'
+  | 'card_generated'
+  | 'referral_visit'
+  | 'referral_submit'
   | 'share_card_download'
   | 'share_link_click'
   | 'picker_export'
