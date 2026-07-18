@@ -50,6 +50,14 @@ import {
   markDeclaredOnDevice,
 } from './lib/storage';
 import { trackEvent, trackPageView, type AnalyticsRouteType } from './lib/analytics';
+import {
+  analyticsPageUrl,
+  attributionParameters,
+  buildAttributedShareUrl,
+  captureAttribution,
+  markReferralVisitTracked,
+  readAttribution,
+} from './lib/attribution';
 import { FeedbackButton, type FeedbackContext } from './components/FeedbackButton';
 import type {
   Declaration,
@@ -3483,6 +3491,7 @@ export default function App() {
   const [{ route, language, declarationId, pokemonSlug }, setLocationState] = useState(() =>
     routeAndLanguageFromPathname(window.location.pathname),
   );
+  const [attribution] = useState(() => captureAttribution(window.location.href, document.referrer));
   const [mode, setMode] = useState<Mode>(() => readMode());
   const [pokemon, setPokemon] = useState<PokemonRow[]>([]);
   const [stats, setStats] = useState<PokemonStat[]>([]);
@@ -3680,9 +3689,7 @@ export default function App() {
   }, [route, language, declarationId, pokemonSlug, t]);
 
   useEffect(() => {
-    const pageUrl = new URL(window.location.href);
-    pageUrl.searchParams.delete('board');
-    pageUrl.hash = '';
+    const pageUrl = analyticsPageUrl(window.location.href);
 
     const pageView = {
       pageLocation: pageUrl.href,
@@ -3697,6 +3704,15 @@ export default function App() {
     lastPageViewSignatureRef.current = signature;
     trackPageView(pageView);
   }, [route, language, declarationId, pokemonSlug]);
+
+  useEffect(() => {
+    if (!attribution || !markReferralVisitTracked(attribution)) return;
+    trackEvent('referral_visit', {
+      ...attributionParameters(attribution),
+      locale: language,
+      route_type: analyticsRouteTypeByRoute[route],
+    });
+  }, [attribution, language, route]);
 
   const displayPokemon = useMemo(() => mergePokemonStats(pokemon, stats), [pokemon, stats]);
   const feedbackFormId = import.meta.env.VITE_TALLY_FEEDBACK_FORM_ID;
@@ -3955,6 +3971,38 @@ function DeclarePage({
   const [submittedSummary, setSubmittedSummary] = useState<LocalDeclarationSummary | null>(() =>
     getLocalDeclarationSummary(mode),
   );
+  const declarationStartedRef = useRef(false);
+  const lastTrackedPokemonRef = useRef<number | null>(null);
+  const [attribution] = useState(() => readAttribution());
+
+  const declarationAnalyticsContext = useCallback(() => ({
+    ...attributionParameters(attribution),
+    mode,
+    language,
+    locale: language,
+    route_type: 'home',
+    source_page: 'home',
+  }), [attribution, language, mode]);
+
+  const trackDeclarationStart = useCallback(() => {
+    if (declarationStartedRef.current) return;
+    declarationStartedRef.current = true;
+    trackEvent('declaration_start', declarationAnalyticsContext());
+  }, [declarationAnalyticsContext]);
+
+  const choosePokemon = useCallback((row: PokemonRow, selectionMethod: 'search' | 'preset') => {
+    setSelected(row);
+    setQuery(row.name);
+    trackDeclarationStart();
+    if (lastTrackedPokemonRef.current === row.id) return;
+    lastTrackedPokemonRef.current = row.id;
+    trackEvent('pokemon_selected', {
+      ...declarationAnalyticsContext(),
+      pokemon_id: row.id,
+      pokemon_slug: row.slug,
+      selection_method: selectionMethod,
+    });
+  }, [declarationAnalyticsContext, trackDeclarationStart]);
 
   useEffect(() => {
     setAlreadyDeclared(hasDeclaredOnDevice(mode));
@@ -3967,9 +4015,8 @@ function DeclarePage({
     if (!requestedPokemon) return;
     const match = findPokemonBySlugOrId(pokemon, requestedPokemon);
     if (!match) return;
-    setSelected(match);
-    setQuery(match.name);
-  }, [pokemon, selected]);
+    choosePokemon(match, 'preset');
+  }, [choosePokemon, pokemon, selected]);
 
   const filteredPokemon = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -4016,14 +4063,29 @@ function DeclarePage({
         revealedCount: result.revealedCount,
       };
       trackEvent('declaration_submit_success', {
+        ...attributionParameters(attribution),
         pokemon_id: selected.id,
         pokemon_slug: selected.slug,
         mode,
         language,
+        locale: language,
+        route_type: 'home',
         source_page: 'home',
         fan_count: result.fanCount,
         revealed_count: result.revealedCount,
       });
+      if (attribution) {
+        trackEvent('referral_submit', {
+          ...attributionParameters(attribution),
+          pokemon_id: selected.id,
+          pokemon_slug: selected.slug,
+          mode,
+          language,
+          locale: language,
+          route_type: 'home',
+          source_page: 'home',
+        });
+      }
       markDeclaredOnDevice(mode, summary);
       setAlreadyDeclared(true);
       setSubmittedSummary(summary);
@@ -4074,7 +4136,12 @@ function DeclarePage({
           t={t}
         />
       ) : (
-        <form id="trainer-terminal" className="declaration-form trainer-console" onSubmit={submit}>
+        <form
+          id="trainer-terminal"
+          className="declaration-form trainer-console"
+          onFocusCapture={trackDeclarationStart}
+          onSubmit={submit}
+        >
           <label className="sr-only" aria-hidden="true">
             Website
             <input
@@ -4118,8 +4185,7 @@ function DeclarePage({
                       <button
                         type="button"
                         onClick={() => {
-                          setSelected(row);
-                          setQuery(row.name);
+                          choosePokemon(row, 'search');
                         }}
                       >
                         <img src={row.sprite} alt="" width={48} height={48} loading="lazy" decoding="async" />
@@ -4132,7 +4198,14 @@ function DeclarePage({
               )}
               {loading && !selected && !query && <div className="spinner" aria-label={t.loading} />}
               {selected && (
-                <button type="button" className="selected-pokemon" onClick={() => setSelected(null)}>
+                <button
+                  type="button"
+                  className="selected-pokemon"
+                  onClick={() => {
+                    setSelected(null);
+                    lastTrackedPokemonRef.current = null;
+                  }}
+                >
                   <img src={selected.sprite} alt="" width={56} height={56} loading="lazy" decoding="async" />
                   <div>
                     <strong>{selected.name}</strong>
@@ -4623,6 +4696,8 @@ function PokemonCardDownloader({
   const [shareStatus, setShareStatus] = useState('');
   const previewRef = useRef<HTMLDivElement>(null);
   const shareStatusTimerRef = useRef<number | null>(null);
+  const generatedCardSignaturesRef = useRef(new Set<string>());
+  const [attribution] = useState(() => readAttribution());
 
   const shareIntent = useMemo<ShareIntent>(() => {
     const pokemonName = formatPokemonName(declaration.pokemonName);
@@ -4638,7 +4713,7 @@ function PokemonCardDownloader({
     return {
       title,
       text,
-      url: absoluteLocalizedDeclarationUrl(declaration.id, language),
+      url: buildAttributedShareUrl(absoluteLocalizedDeclarationUrl(declaration.id, language)),
       mediaUrl: twitterImageUrl,
     };
   }, [declaration.id, declaration.mode, declaration.pokemonName, declaration.trainerName, language, t]);
@@ -4654,12 +4729,29 @@ function PokemonCardDownloader({
         ] as const),
       );
       setCanvases(Object.fromEntries(entries));
+      const generationSignature = `${declaration.id}:${artStyle}:${shiny}`;
+      if (!generatedCardSignaturesRef.current.has(generationSignature)) {
+        generatedCardSignaturesRef.current.add(generationSignature);
+        trackEvent('card_generated', {
+          ...attributionParameters(attribution),
+          pokemon_id: declaration.pokemonId,
+          pokemon_slug: normalizePokemonLookup(declaration.pokemonName),
+          mode: declaration.mode,
+          language,
+          locale: language,
+          route_type: sourcePage === 'declaration_success' ? 'home' : 'declaration_detail',
+          source_page: sourcePage,
+          art_style: artStyle,
+          shiny,
+          card_count: entries.length,
+        });
+      }
     } catch (cardError) {
       setError(cardError instanceof Error ? cardError.message : t.cardGenerationError);
     } finally {
       setLoading(false);
     }
-  }, [artStyle, declaration, shiny, t]);
+  }, [artStyle, attribution, declaration, language, shiny, sourcePage, t]);
 
   useEffect(() => {
     void generateCards();
@@ -4688,10 +4780,13 @@ function PokemonCardDownloader({
 
   function shareAnalyticsContext() {
     return {
+      ...attributionParameters(attribution),
       pokemon_id: declaration.pokemonId,
       pokemon_slug: normalizePokemonLookup(declaration.pokemonName),
       mode: declaration.mode,
       language,
+      locale: language,
+      route_type: sourcePage === 'declaration_success' ? 'home' : 'declaration_detail',
       source_page: sourcePage,
     };
   }

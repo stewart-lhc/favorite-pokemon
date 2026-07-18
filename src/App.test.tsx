@@ -258,6 +258,7 @@ describe('Favorite Pokemon clone', () => {
   beforeEach(() => {
     window.history.replaceState({}, '', '/');
     localStorage.clear();
+    sessionStorage.clear();
     vi.restoreAllMocks();
     delete window.gtag;
     delete window.Tally;
@@ -1372,6 +1373,8 @@ describe('Favorite Pokemon clone', () => {
       pokemon_slug: 'pikachu',
       mode: 'favourite',
       language: 'en',
+      locale: 'en',
+      route_type: 'home',
       source_page: 'home',
       fan_count: 13,
       revealed_count: 7,
@@ -1380,6 +1383,81 @@ describe('Favorite Pokemon clone', () => {
     expect(serializedEvent).not.toContain('Ari');
     expect(serializedEvent).not.toContain('forever');
     expect(serializedEvent).not.toContain('posted-1');
+  });
+
+  it('tracks a safe UTM visit through declaration, card generation, and sharing', async () => {
+    window.history.replaceState(
+      {},
+      '',
+      '/?utm_source=reddit&utm_medium=social&utm_campaign=community-cup&creator=oak&trainer=Ari&reason=secret',
+    );
+    stubDeclarationFetch();
+    installCardCanvasMocks();
+    const nativeShare = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'share', { configurable: true, value: nativeShare });
+    const gtag = vi.fn();
+    window.gtag = gtag;
+
+    const user = userEvent.setup();
+    render(<App />);
+
+    await waitFor(() => expect(eventParameters(gtag, 'referral_visit')).toEqual([{
+      utm_source: 'reddit',
+      utm_medium: 'social',
+      utm_campaign: 'community-cup',
+      creator: 'oak',
+      locale: 'en',
+      route_type: 'home',
+    }]));
+
+    await submitPikachuDeclaration(user);
+    await screen.findByRole('heading', { name: 'Declaration saved. That Pokémon has someone now.' });
+    await waitFor(() => expect(eventParameters(gtag, 'card_generated')).toHaveLength(1));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Share card' })).toBeEnabled());
+    await user.click(screen.getByRole('button', { name: 'Share card' }));
+    await waitFor(() => expect(eventParameters(gtag, 'share_link_click')).toHaveLength(1));
+
+    expect(eventParameters(gtag, 'declaration_start')).toHaveLength(1);
+    expect(eventParameters(gtag, 'pokemon_selected')).toEqual([expect.objectContaining({
+      utm_source: 'reddit',
+      utm_campaign: 'community-cup',
+      pokemon_id: 25,
+      pokemon_slug: 'pikachu',
+      locale: 'en',
+      route_type: 'home',
+      selection_method: 'search',
+    })]);
+    expect(eventParameters(gtag, 'referral_submit')).toEqual([expect.objectContaining({
+      utm_source: 'reddit',
+      utm_medium: 'social',
+      utm_campaign: 'community-cup',
+      creator: 'oak',
+      pokemon_id: 25,
+      pokemon_slug: 'pikachu',
+      locale: 'en',
+      route_type: 'home',
+    })]);
+    expect(eventParameters(gtag, 'card_generated')).toEqual([expect.objectContaining({
+      utm_source: 'reddit',
+      utm_campaign: 'community-cup',
+      pokemon_id: 25,
+      card_count: 3,
+      source_page: 'declaration_success',
+    })]);
+    expect(eventParameters(gtag, 'share_link_click')).toEqual([expect.objectContaining({
+      utm_source: 'reddit',
+      utm_campaign: 'community-cup',
+      method: 'native',
+      source_page: 'declaration_success',
+    })]);
+    expect(nativeShare).toHaveBeenCalledWith(expect.objectContaining({
+      url: expect.stringContaining('utm_campaign=declaration_card'),
+    }));
+
+    const serializedEvents = JSON.stringify(gtag.mock.calls);
+    expect(serializedEvents).not.toContain('Ari');
+    expect(serializedEvents).not.toContain('secret');
+    expect(serializedEvents).not.toContain('forever');
   });
 
   it('includes a bot-filled honeypot value in the declaration request', async () => {
@@ -1424,6 +1502,8 @@ describe('Favorite Pokemon clone', () => {
       pokemon_slug: 'pikachu',
       mode: 'favourite',
       language: 'en',
+      locale: 'en',
+      route_type: 'declaration_detail',
       source_page: 'declaration_detail',
       card_format: 'square',
       art_style: 'official',
@@ -1436,6 +1516,8 @@ describe('Favorite Pokemon clone', () => {
       pokemon_slug: 'pikachu',
       mode: 'favourite',
       language: 'en',
+      locale: 'en',
+      route_type: 'declaration_detail',
       source_page: 'declaration_detail',
       method: 'platform_intent',
       platform: 'x',
@@ -1463,6 +1545,8 @@ describe('Favorite Pokemon clone', () => {
       pokemon_slug: 'pikachu',
       mode: 'favourite',
       language: 'en',
+      locale: 'en',
+      route_type: 'declaration_detail',
       source_page: 'declaration_detail',
       method: 'native',
     });
@@ -1490,6 +1574,8 @@ describe('Favorite Pokemon clone', () => {
       pokemon_slug: 'pikachu',
       mode: 'favourite',
       language: 'en',
+      locale: 'en',
+      route_type: 'declaration_detail',
       source_page: 'declaration_detail',
       method: 'copy_link',
     });
